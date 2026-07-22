@@ -1,12 +1,11 @@
-import { useState } from 'react'
 import heroImg from './assets/hero.png'
 import './App.css'
 import AnimatedArrows from './components/Arrows'
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(true)
+
 
   return (
-    <div className={`relative min-h-screen font-sans antialiased transition-colors duration-300 bg-[#0b0c10] text-[#9ca3af]`}>
+    <div className={`relative min-h-screen font-sans antialiased transition-colors duration-300 bg-[#1E1E1E] text-[#9ca3af]`}>
 
 
 

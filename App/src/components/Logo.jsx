@@ -403,7 +403,7 @@ const Logo = () => {
                 </svg>
             </div>
 
-            <p className="text-2xl font-bold">Enncom</p>
+            <p className="text-2xl font-bold" style={{ color: '#ffff' }}>Enncom</p>
         </div>
 
     )
