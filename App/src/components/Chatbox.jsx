@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { io } from "socket.io-client";
 
 const COLORS = {
     bg: '#1e1e1e',
@@ -22,6 +23,14 @@ function Chatbox() {
     const nextId = useRef(seedMessages.length + 1);
 
     useEffect(() => {
+
+        const socket = io(import.meta.env.VITE_API_URL);
+        socket.on("chat message", (msg) => {
+            console.log(msg);
+        })
+        return () => {
+            socket.disconnect();
+        }, [];
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
