@@ -1,2 +1,3 @@
-falsk 
-flask-socketio
+Flask
+Flask-SocketIO
+Flask-Cors

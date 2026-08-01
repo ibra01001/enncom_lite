@@ -21,16 +21,23 @@ function Chatbox() {
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
     const nextId = useRef(seedMessages.length + 1);
+    const socketRef = useRef(null);
 
     useEffect(() => {
-
-        const socket = io(import.meta.env.VITE_API_URL);
-        socket.on("chat message", (msg) => {
-            console.log(msg);
-        })
+        socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+        
+        socketRef.current.on("chat message", (msg) => {
+            setMessages((prev) => [...prev, msg]);
+        });
+        
         return () => {
-            socket.disconnect();
-        }, [];
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
+        };
+    }, []);
+
+    useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
@@ -39,7 +46,14 @@ function Chatbox() {
     const handleSend = () => {
         const trimmed = input.trim();
         if (!trimmed) return;
-        setMessages((prev) => [...prev, { id: nextId.current++, username: 'you', text: trimmed }]);
+        
+        const newMsg = { id: nextId.current++, username: 'you', text: trimmed };
+        setMessages((prev) => [...prev, newMsg]);
+        
+        if (socketRef.current) {
+            socketRef.current.emit("chat message", newMsg);
+        }
+        
         setInput('');
     };
 
