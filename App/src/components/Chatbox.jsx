@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { io } from "socket.io-client";
+import { useSocket } from '../context/SocketContext';
 
 const COLORS = {
     bg: '#1e1e1e',
@@ -21,21 +21,21 @@ function Chatbox() {
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
     const nextId = useRef(seedMessages.length + 1);
-    const socketRef = useRef(null);
+    const socket = useSocket();
 
     useEffect(() => {
-        socketRef.current = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
-        
-        socketRef.current.on("chat message", (msg) => {
+        if (!socket) return;
+
+        const handleMessage = (msg) => {
             setMessages((prev) => [...prev, msg]);
-        });
-        
-        return () => {
-            if (socketRef.current) {
-                socketRef.current.disconnect();
-            }
         };
-    }, []);
+
+        socket.on("chat message", handleMessage);
+
+        return () => {
+            socket.off("chat message", handleMessage);
+        };
+    }, [socket]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -46,14 +46,14 @@ function Chatbox() {
     const handleSend = () => {
         const trimmed = input.trim();
         if (!trimmed) return;
-        
+
         const newMsg = { id: nextId.current++, username: 'you', text: trimmed };
         setMessages((prev) => [...prev, newMsg]);
-        
-        if (socketRef.current) {
-            socketRef.current.emit("chat message", newMsg);
+
+        if (socket) {
+            socket.emit("chat message", newMsg);
         }
-        
+
         setInput('');
     };
 
