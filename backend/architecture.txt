@@ -1,0 +1,7 @@
+.
+├── app.py
+├── architecture.txt
+├── Dockerfile
+└── requirements.txt
+
+1 directory, 4 files

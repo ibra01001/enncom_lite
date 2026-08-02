@@ -1,0 +1,42 @@
+.
+├── App
+│   ├── architecture.txt
+│   ├── dist
+│   │   ├── assets
+│   │   │   ├── index-9GTrqH3c.js
+│   │   │   └── index-CsOELX3A.css
+│   │   ├── favicon.svg
+│   │   ├── icons.svg
+│   │   └── index.html
+│   ├── Dockerfile
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── public
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   ├── README.md
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   ├── hero.png
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
+│   │   ├── components
+│   │   │   ├── Arrows.jsx
+│   │   │   ├── Chatbox.jsx
+│   │   │   ├── Logo.jsx
+│   │   │   └── Navbar.jsx
+│   │   ├── index.css
+│   │   └── main.jsx
+│   └── vite.config.js
+├── architecture.txt
+├── backend
+│   ├── app.py
+│   ├── Dockerfile
+│   └── requirements.txt
+└── docker-compose.yml
+
+9 directories, 31 files
