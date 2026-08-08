@@ -21,13 +21,26 @@ function Chatbox() {
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
     const nextId = useRef(seedMessages.length + 1);
+    const clientMsgId = useRef(0);
     const { socket, myId } = useSocket();
 
     useEffect(() => {
         if (!socket) return;
 
         const handleMessage = (msg) => {
-            // Assign a local ID for React keys
+            // If this is our own message echoed back, reconcile with the pending one
+            if (msg.clientMsgId !== undefined && msg.senderId === myId) {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.clientMsgId === msg.clientMsgId
+                            ? { ...m, pending: false, senderId: msg.senderId }
+                            : m
+                    )
+                );
+                return;
+            }
+
+            // Someone else's message — add it
             msg.id = nextId.current++;
             setMessages((prev) => [...prev, msg]);
         };
@@ -37,7 +50,7 @@ function Chatbox() {
         return () => {
             socket.off("chat message", handleMessage);
         };
-    }, [socket]);
+    }, [socket, myId]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -49,9 +62,24 @@ function Chatbox() {
         const trimmed = input.trim();
         if (!trimmed) return;
 
-        // Send only the text — server will stamp the identity
+        const msgClientId = clientMsgId.current++;
+        const localId = nextId.current++;
+
+        // Optimistic: add to UI immediately with pending state
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: localId,
+                clientMsgId: msgClientId,
+                senderId: myId,
+                text: trimmed,
+                pending: true,
+            },
+        ]);
+
+        // Send to server — it will stamp identity and echo back
         if (socket) {
-            socket.emit("chat message", { text: trimmed });
+            socket.emit("chat message", { text: trimmed, clientMsgId: msgClientId });
         }
 
         setInput('');
@@ -107,14 +135,13 @@ function Chatbox() {
                             <div
                                 key={msg.id}
                                 className="flex flex-col gap-0.5"
-
+                                style={{ opacity: msg.pending ? 0.5 : 1 }}
                             >
                                 <span style={{ color: isOwn ? COLORS.accent : 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
                                     #{msg.senderId}
                                 </span>
                                 <p
                                     className="text-white text-sm leading-relaxed break-words m-0"
-
                                 >
                                     {msg.text}
                                 </p>
