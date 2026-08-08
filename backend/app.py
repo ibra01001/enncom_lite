@@ -46,7 +46,7 @@ def handle_connect():
     emit('session_info', {'myId': short_id})
 
     history = r.lrange(MESSAGE_KEY, 0, MAX_HISTORY -1)
-    message = [json.loads(m) for m in history]
+    message = [json.loads(m) for m in history] # newest first 
     emit(("initial history",message))
 
 
@@ -66,6 +66,11 @@ def handle_message(msg):
     msg['senderId'] = sender_id         # stamp with server identity
     # Pass through clientMsgId so the sender can reconcile optimistic UI
     print(f'[#{sender_id}] {msg["text"]}')
+
+    # save to redis  
+    r.lpush(MESSAGE_KEY, json.dumps(msg))  # append new message
+    r.ltrim(MESSAGE_KEY, 0, MAX_HISTORY - 1)
+    r.expire(MESSAGE_KEY, TTL_SECONDS)
     emit('chat message', msg, broadcast=True, include_self=True)
 
 if __name__ == '__main__':
