@@ -8,12 +8,12 @@ const COLORS = {
 };
 
 const seedMessages = [
-    { id: 1, username: 'devuser', text: 'anyone got the link to the api docs?' },
-    { id: 2, username: 'sam_k', text: 'checking, one sec' },
-    { id: 3, username: 'sam_k', text: 'https://docs.example.com/api — looks like the latest version' },
-    { id: 4, username: 'devuser', text: 'perfect, thanks' },
-    { id: 5, username: 'jlin', text: 'anyone else seeing timeouts on staging today?' },
-    { id: 6, username: 'devuser', text: 'not on my end, might just be your region' },
+    { id: 1, senderId: 'devusr', text: 'anyone got the link to the api docs?' },
+    { id: 2, senderId: 'sam_kk', text: 'checking, one sec' },
+    { id: 3, senderId: 'sam_kk', text: 'https://docs.example.com/api — looks like the latest version' },
+    { id: 4, senderId: 'devusr', text: 'perfect, thanks' },
+    { id: 5, senderId: 'jlin00', text: 'anyone else seeing timeouts on staging today?' },
+    { id: 6, senderId: 'devusr', text: 'not on my end, might just be your region' },
 ];
 
 function Chatbox() {
@@ -21,12 +21,14 @@ function Chatbox() {
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
     const nextId = useRef(seedMessages.length + 1);
-    const socket = useSocket();
+    const { socket, myId } = useSocket();
 
     useEffect(() => {
         if (!socket) return;
 
         const handleMessage = (msg) => {
+            // Assign a local ID for React keys
+            msg.id = nextId.current++;
             setMessages((prev) => [...prev, msg]);
         };
 
@@ -47,11 +49,9 @@ function Chatbox() {
         const trimmed = input.trim();
         if (!trimmed) return;
 
-        const newMsg = { id: nextId.current++, username: 'you', text: trimmed };
-        setMessages((prev) => [...prev, newMsg]);
-
+        // Send only the text — server will stamp the identity
         if (socket) {
-            socket.emit("chat message", newMsg);
+            socket.emit("chat message", { text: trimmed });
         }
 
         setInput('');
@@ -91,21 +91,36 @@ function Chatbox() {
                         backgroundColor: COLORS.secondary,
                         borderBottom: `1px solid ${COLORS.accent}`,
                     }}
-                    className="shrink-0 flex items-center px-5"
+                    className="shrink-0 flex items-center justify-between px-5"
                 >
                     <h4 className="text-white font-bold text-base m-0">#Public Chat</h4>
+                    <span style={{ color: 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
+                        You are #{myId ?? '...'}
+                    </span>
                 </div>
 
                 {/* Messages */}
                 <div ref={scrollRef} className="pc-scrol text-left flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
-                    {messages.map((msg) => (
-                        <div key={msg.id} className="flex flex-col gap-0.5">
-                            <span style={{ color: 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
-                                {msg.username}
-                            </span>
-                            <p className="text-white text-sm leading-relaxed break-words m-0">{msg.text}</p>
-                        </div>
-                    ))}
+                    {messages.map((msg) => {
+                        const isOwn = msg.senderId === myId;
+                        return (
+                            <div
+                                key={msg.id}
+                                className="flex flex-col gap-0.5"
+
+                            >
+                                <span style={{ color: isOwn ? COLORS.accent : 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
+                                    #{msg.senderId}
+                                </span>
+                                <p
+                                    className="text-white text-sm leading-relaxed break-words m-0"
+
+                                >
+                                    {msg.text}
+                                </p>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {/* Input bar */}
