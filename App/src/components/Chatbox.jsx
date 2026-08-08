@@ -27,6 +27,16 @@ function Chatbox() {
     useEffect(() => {
         if (!socket) return;
 
+        const handleHistory = (historyMsgs) => {
+            if (historyMsgs && historyMsgs.length > 0) {
+                const formatted = historyMsgs.map((msg) => ({
+                    ...msg,
+                    id: msg.id || nextId.current++,
+                }));
+                setMessages(formatted);
+            }
+        };
+
         const handleMessage = (msg) => {
             // If this is our own message echoed back, reconcile with the pending one
             if (msg.clientMsgId !== undefined && msg.senderId === myId) {
@@ -45,9 +55,11 @@ function Chatbox() {
             setMessages((prev) => [...prev, msg]);
         };
 
+        socket.on("initial history", handleHistory);
         socket.on("chat message", handleMessage);
 
         return () => {
+            socket.off("initial history", handleHistory);
             socket.off("chat message", handleMessage);
         };
     }, [socket, myId]);
