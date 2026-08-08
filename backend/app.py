@@ -3,13 +3,25 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 import os
 import time 
+import redis
+import json
+
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
-CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins="*")
+CORS(app, resources={r"/*": {"origins": "*"}}) 
+socketio = SocketIO(app, cors_allowed_origins="*") # ! we will change this later
 
-# Maps client_token → short_id (persists identity across reconnects)
+# connect to redis 
+r = redis.Redis(host="redis", port=6379, decode_responses=True)
+
+MESSAGE_KEY = "chat:messages"  # append-only list (LRU) of all messages
+MAX_HISTORY = 50
+TTL_SECONDS = 86400
+# Maps client_token → short_id (persists identity across reconnects ) 
 token_to_id = {}
+
+
 
 def get_or_create_id(client_token):
     """Derive a stable short ID from a client token.
@@ -23,6 +35,8 @@ def get_or_create_id(client_token):
         token_to_id[client_token] = short_id
     return short_id
 
+
+
 @socketio.on('connect')
 def handle_connect():
     client_token = request.args.get('client_token', None)
@@ -31,13 +45,20 @@ def handle_connect():
     # Single source of truth: server tells the client its assigned ID
     emit('session_info', {'myId': short_id})
 
+    history = r.lrange(MESSAGE_KEY, 0, MAX_HISTORY -1)
+    message = [json.loads(m) for m in history]
+    emit(("initial history",message))
+
+
 @socketio.on('disconnect')
 def handle_disconnect():
     print(f'disconnected: {request.sid}')
 
+
+
 @socketio.on('chat message')
 def handle_message(msg):
-    # Simulate server latency
+    # ! Simulate server latency for testing
     time.sleep(2)
     client_token = request.args.get('client_token', None)
     sender_id = get_or_create_id(client_token)

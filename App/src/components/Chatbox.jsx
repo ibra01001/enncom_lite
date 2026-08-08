@@ -65,7 +65,7 @@ function Chatbox() {
         const msgClientId = clientMsgId.current++;
         const localId = nextId.current++;
 
-        // Optimistic: add to UI immediately with pending state
+        // Optimistic: add to UI immediately with pending state 
         setMessages((prev) => [
             ...prev,
             {
