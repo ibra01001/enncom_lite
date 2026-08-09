@@ -63,9 +63,10 @@ def handle_message(msg):
     msg['senderId'] = sender_id         # stamp with server identity
     print(f'[#{sender_id}] {msg["text"]}')
 
-    # Save to Redis
+    # Save to Redis (strip clientMsgId so history stays clean)
     try:
-        r.lpush(MESSAGE_KEY, json.dumps(msg))  # prepend new message
+        msg_to_store = {k: v for k, v in msg.items() if k != 'clientMsgId'}
+        r.lpush(MESSAGE_KEY, json.dumps(msg_to_store))  # prepend new message
         r.ltrim(MESSAGE_KEY, 0, MAX_HISTORY - 1)
         r.expire(MESSAGE_KEY, TTL_SECONDS)
     except Exception as e:

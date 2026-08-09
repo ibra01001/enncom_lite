@@ -7,20 +7,13 @@ const COLORS = {
     accent: '#FF3535',
 };
 
-const seedMessages = [
-    { id: 1, senderId: 'devusr', text: 'anyone got the link to the api docs?' },
-    { id: 2, senderId: 'sam_kk', text: 'checking, one sec' },
-    { id: 3, senderId: 'sam_kk', text: 'https://docs.example.com/api — looks like the latest version' },
-    { id: 4, senderId: 'devusr', text: 'perfect, thanks' },
-    { id: 5, senderId: 'jlin00', text: 'anyone else seeing timeouts on staging today?' },
-    { id: 6, senderId: 'devusr', text: 'not on my end, might just be your region' },
-];
+
 
 function Chatbox() {
-    const [messages, setMessages] = useState(seedMessages);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
-    const nextId = useRef(seedMessages.length + 1);
+    const nextId = useRef(1);
     const clientMsgId = useRef(0);
     const { socket, myId } = useSocket();
 
@@ -40,13 +33,20 @@ function Chatbox() {
         const handleMessage = (msg) => {
             // If this is our own message echoed back, reconcile with the pending one
             if (msg.clientMsgId !== undefined && msg.senderId === myId) {
-                setMessages((prev) =>
-                    prev.map((m) =>
-                        m.clientMsgId === msg.clientMsgId
-                            ? { ...m, pending: false, senderId: msg.senderId }
-                            : m
-                    )
-                );
+                setMessages((prev) => {
+                    const hasPending = prev.some(
+                        (m) => m.pending && m.clientMsgId === msg.clientMsgId
+                    );
+                    if (hasPending) {
+                        return prev.map((m) =>
+                            m.pending && m.clientMsgId === msg.clientMsgId
+                                ? { ...m, pending: false }
+                                : m
+                        );
+                    }
+                    // Fallback: if not found in pending, treat as new message
+                    return [...prev, { ...msg, id: nextId.current++ }];
+                });
                 return;
             }
 
