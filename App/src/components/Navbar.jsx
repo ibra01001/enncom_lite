@@ -7,7 +7,7 @@ const Navbar = () => {
 
 
             <div className='flex justify-between gap-5 align-center absolute right-10 top-2  text-white'>
-                <a href="#">What is Enncom?</a>
+                <Link to="/about">What is Enncom?</Link>
                 <a href="#">Features</a>
                 <a href="#">Guide</a>
                 <Link to="/chatbox">Public Chat</Link>
@@ -16,5 +16,5 @@ const Navbar = () => {
         </div>
     )
 }
-1
+
 export default Navbar

@@ -2,6 +2,7 @@ import './App.css'
 import { Routes, Route } from 'react-router-dom'
 import AnimatedArrows from './components/Arrows'
 import Chatbox from './components/Chatbox'
+import About from './components/About'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         </main>
       </div>} />
       <Route path="/chatbox" element={<Chatbox />} />
+      <Route path="/about" element={<About />} />
     </Routes>
   )
 }
