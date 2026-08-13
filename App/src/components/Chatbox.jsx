@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
-
+import Rooms from './Rooms';
 const COLORS = {
     bg: '#1e1e1e',
     secondary: '#656565',
@@ -105,6 +105,7 @@ function Chatbox() {
 
     return (
         <div
+
             style={{
                 backgroundColor: COLORS.bg,
                 fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
@@ -119,7 +120,7 @@ function Chatbox() {
         .pc-scroll::-webkit-scrollbar-track { background: transparent; }
         .pc-scroll::-webkit-scrollbar-thumb { background: #656565; }
       `}</style>
-
+            <Rooms />
             <div
                 style={{ border: `1px solid ${COLORS.accent}`, height: '88vh', borderRadius: 0 }}
                 className="w-full sm:w-4/5 lg:w-1/2 flex flex-col"
@@ -199,7 +200,9 @@ function Chatbox() {
                     </button>
                 </div>
             </div>
+
         </div>
+
     );
 }
 
