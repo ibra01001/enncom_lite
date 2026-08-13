@@ -105,12 +105,11 @@ function Chatbox() {
 
     return (
         <div
-
             style={{
                 backgroundColor: COLORS.bg,
                 fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
             }}
-            className="min-h-screen flex items-center justify-center px-4 py-6"
+            className="w-full h-full flex flex-row overflow-hidden flex-1"
         >
             <style>{`
         .pc-input::placeholder { color: rgba(255,255,255,0.3); }
@@ -120,28 +119,31 @@ function Chatbox() {
         .pc-scroll::-webkit-scrollbar-track { background: transparent; }
         .pc-scroll::-webkit-scrollbar-thumb { background: #656565; }
       `}</style>
+            
+            {/* Rooms Sidebar */}
             <Rooms />
-            <div
-                style={{ border: `1px solid ${COLORS.accent}`, height: '88vh', borderRadius: 0 }}
-                className="w-full sm:w-4/5 lg:w-1/2 flex flex-col"
-            >
-                {/* Header */}
+
+            {/* Main Chat Box */}
+            <div className="flex-1 h-full flex flex-col min-w-0 bg-[#1e1e1e]">
+                {/* Chat Header */}
                 <div
                     style={{
-                        height: '10vh',
-                        backgroundColor: COLORS.secondary,
+                        backgroundColor: '#2A2A2A',
                         borderBottom: `1px solid ${COLORS.accent}`,
                     }}
-                    className="shrink-0 flex items-center justify-between px-5"
+                    className="h-14 shrink-0 flex items-center justify-between px-6"
                 >
-                    <h4 className="text-white font-bold text-base m-0">#Public Chat</h4>
-                    <span style={{ color: 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
+                    <div className="flex items-center gap-2">
+                        <h4 className="text-white font-bold text-base m-0">#Public Chat</h4>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <span style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs font-mono font-semibold">
                         You are #{myId ?? '...'}
                     </span>
                 </div>
 
-                {/* Messages */}
-                <div ref={scrollRef} className="pc-scrol text-left flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+                {/* Messages Container */}
+                <div ref={scrollRef} className="pc-scroll text-left flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
                     {messages.map((msg) => {
                         const isOwn = msg.senderId === myId;
                         return (
@@ -153,9 +155,7 @@ function Chatbox() {
                                 <span style={{ color: isOwn ? COLORS.accent : 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
                                     #{msg.senderId}
                                 </span>
-                                <p
-                                    className="text-white text-sm leading-relaxed break-words m-0"
-                                >
+                                <p className="text-white text-sm leading-relaxed break-words m-0">
                                     {msg.text}
                                 </p>
                             </div>
@@ -163,10 +163,10 @@ function Chatbox() {
                     })}
                 </div>
 
-                {/* Input bar */}
+                {/* Input Bar */}
                 <div
                     style={{ borderTop: `1px solid ${COLORS.accent}` }}
-                    className="shrink-0 flex items-center gap-3 px-5 py-4"
+                    className="shrink-0 flex items-center gap-3 px-6 py-4 bg-[#1e1e1e]"
                 >
                     <input
                         type="text"
@@ -181,7 +181,7 @@ function Chatbox() {
                             color: '#ffffff',
                             borderRadius: 0,
                         }}
-                        className="pc-input flex-1 text-sm px-3 py-2 outline-none min-w-0"
+                        className="pc-input flex-1 text-sm px-4 py-2.5 outline-none min-w-0"
                     />
                     <button
                         type="button"
@@ -194,15 +194,13 @@ function Chatbox() {
                             opacity: isEmpty ? 0.5 : undefined,
                             cursor: isEmpty ? 'not-allowed' : 'pointer',
                         }}
-                        className="pc-btn text-white text-sm font-bold px-4 py-2 shrink-0 hover:opacity-80 active:opacity-70"
+                        className="pc-btn text-white text-sm font-bold px-6 py-2.5 shrink-0 hover:opacity-80 active:opacity-70 transition-opacity"
                     >
                         Send
                     </button>
                 </div>
             </div>
-
         </div>
-
     );
 }
 
