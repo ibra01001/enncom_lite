@@ -1,4 +1,5 @@
 .
+├── anonymous_id_via_socketID.md
 ├── App
 │   ├── architecture.txt
 │   ├── dist
@@ -25,18 +26,25 @@
 │   │   │   ├── react.svg
 │   │   │   └── vite.svg
 │   │   ├── components
+│   │   │   ├── About.jsx
 │   │   │   ├── Arrows.jsx
 │   │   │   ├── Chatbox.jsx
 │   │   │   ├── Logo.jsx
-│   │   │   └── Navbar.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   └── Rooms.jsx
+│   │   ├── context
+│   │   │   └── SocketContext.jsx
 │   │   ├── index.css
 │   │   └── main.jsx
 │   └── vite.config.js
 ├── architecture.txt
 ├── backend
 │   ├── app.py
+│   ├── architecture.txt
 │   ├── Dockerfile
 │   └── requirements.txt
-└── docker-compose.yml
+├── docker-compose.yml
+├── futurePlan.md
+└── README.md
 
-9 directories, 31 files
+10 directories, 38 files
