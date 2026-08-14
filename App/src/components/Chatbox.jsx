@@ -1,15 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSocket } from '../context/SocketContext';
 import Rooms from './Rooms';
+
 const COLORS = {
     bg: '#1e1e1e',
     secondary: '#656565',
     accent: '#FF3535',
 };
 
-
-
 function Chatbox() {
+    const [currentRoom, setCurrentRoom] = useState('public');
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
@@ -20,8 +20,23 @@ function Chatbox() {
     useEffect(() => {
         if (!socket) return;
 
-        const handleHistory = (historyMsgs) => {
-            if (historyMsgs && historyMsgs.length > 0) {
+        // Emit join_room for current active room
+        const joinCurrentRoom = () => {
+            socket.emit("join_room", { room: currentRoom });
+        };
+
+        // Join room immediately on mount / room change
+        joinCurrentRoom();
+
+        // Also re-join room if socket reconnects automatically
+        socket.on("connect", joinCurrentRoom);
+
+        const handleHistory = (data) => {
+            // Handle both object payload { room, history } and legacy array
+            const historyMsgs = Array.isArray(data) ? data : (data?.history || []);
+            const targetRoom = Array.isArray(data) ? 'public' : (data?.room || 'public');
+
+            if (targetRoom === currentRoom && historyMsgs.length >= 0) {
                 const formatted = historyMsgs.map((msg) => ({
                     ...msg,
                     id: msg.id || nextId.current++,
@@ -31,6 +46,9 @@ function Chatbox() {
         };
 
         const handleMessage = (msg) => {
+            // Ignore messages meant for other rooms
+            if (msg.room && msg.room !== currentRoom) return;
+
             // If this is our own message echoed back, reconcile with the pending one
             if (msg.clientMsgId !== undefined && msg.senderId === myId) {
                 setMessages((prev) => {
@@ -59,10 +77,11 @@ function Chatbox() {
         socket.on("chat message", handleMessage);
 
         return () => {
+            socket.off("connect", joinCurrentRoom);
             socket.off("initial history", handleHistory);
             socket.off("chat message", handleMessage);
         };
-    }, [socket, myId]);
+    }, [socket, myId, currentRoom]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -85,13 +104,18 @@ function Chatbox() {
                 clientMsgId: msgClientId,
                 senderId: myId,
                 text: trimmed,
+                room: currentRoom,
                 pending: true,
             },
         ]);
 
-        // Send to server — it will stamp identity and echo back
+        // Send to server with room identifier — server will stamp identity and echo back to room
         if (socket) {
-            socket.emit("chat message", { text: trimmed, clientMsgId: msgClientId });
+            socket.emit("chat message", { 
+                text: trimmed, 
+                clientMsgId: msgClientId,
+                room: currentRoom 
+            });
         }
 
         setInput('');
@@ -121,7 +145,7 @@ function Chatbox() {
       `}</style>
             
             {/* Rooms Sidebar */}
-            <Rooms />
+            <Rooms currentRoom={currentRoom} onSelectRoom={setCurrentRoom} />
 
             {/* Main Chat Box */}
             <div className="flex-1 h-full flex flex-col min-w-0 bg-[#1e1e1e]">
@@ -134,7 +158,9 @@ function Chatbox() {
                     className="h-14 shrink-0 flex items-center justify-between px-6"
                 >
                     <div className="flex items-center gap-2">
-                        <h4 className="text-white font-bold text-base m-0">#Public Chat</h4>
+                        <h4 className="text-white font-bold text-base m-0 capitalize">
+                            #{currentRoom === 'public' ? 'Public Chat' : currentRoom}
+                        </h4>
                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                     </div>
                     <span style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs font-mono font-semibold">

@@ -1,0 +1,6 @@
+### Globally persistent WebSocket connection with on-demand, room-based message history retrieva
+
+
+
+
+To implement this in a professional and scalable way, keep the Socket.IO connection inside a global `SocketContext` so the client establishes only one persistent connection when the application starts, instead of reconnecting whenever the user opens or changes the chat. Then make the `Chatbox` responsible only for requesting the data it needs: when the component mounts, emit an event such as `get_history` or `join_room` with the selected room name, for example `public`. The Flask-SocketIO backend should handle this event, retrieve the room’s message history from Redis or the database, and send it back only to the requesting client through an `initial_history` event. When the user switches rooms, do not recreate the socket; simply emit `join_room` for the new room, load its history, and update the React state. Messages should also include the room identifier so the server can broadcast them only to users currently subscribed to that room. This separates the persistent connection from room management, avoids unnecessary reconnects, makes switching rooms instant, and gives you a clean architecture that can later support multiple public channels, private conversations, notifications, and other real-time features without redesigning the socket layer.
