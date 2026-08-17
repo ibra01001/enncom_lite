@@ -5,6 +5,7 @@ import os
 import time 
 import redis
 import json
+import uuid
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -13,7 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Connect to Redis
 r = redis.Redis(host="redis", port=6379, decode_responses=True)
-
+PUBLIC_CHAT_KEY = "chat:messages:public"
 MAX_HISTORY = 50
 TTL_SECONDS = 86400
 
@@ -29,6 +30,107 @@ def get_or_create_id(client_token):
     if client_token:
         token_to_id[client_token] = short_id
     return short_id
+
+def get_current_user_id():
+    """Extract persistent short ID for current request socket."""
+    client_token = request.args.get('client_token', None)
+    return get_or_create_id(client_token)
+
+# Room Data Schema:
+# chat:room:<room_id>      -> Hash { name, owner, created_at }
+# chat:messages:<room_id>  -> List of JSON messages
+# user:<user_id>:rooms     -> Set of joined room IDs
+
+@socketio.on('create_room')
+def create_room(data=None):
+    user_id = get_current_user_id()
+    custom_name = data.get('name') if isinstance(data, dict) else None
+    
+    room_id = uuid.uuid4().hex[:8]
+    room_name = f"room_{room_id}"
+    display_name = custom_name.strip() if custom_name and custom_name.strip() else f"Private Room #{room_id[:4]}"
+
+    # Save room metadata in Redis
+    r.hset(f"chat:room:{room_name}", mapping={
+        "name": display_name,
+        "owner": user_id,
+        "created_at": time.time()
+    })
+
+    # Add room to creator's personal room set
+    r.sadd(f"user:{user_id}:rooms", room_name)
+
+    # Automatically join creator to socket room
+    flask_join_room(room_name)
+
+    # Initialize room message history
+    room_key = f"chat:messages:{room_name}"
+    r.lpush(room_key, json.dumps({
+        "room": room_name,
+        "senderId": "system",
+        "text": f"Room '{display_name}' created.",
+        "timestamp": time.time()
+    }))
+    r.expire(room_key, TTL_SECONDS)
+
+    emit('room_created', {
+        'room': room_name,
+        'name': display_name,
+        'owner': user_id
+    })
+    return room_name
+
+@socketio.on('get_my_rooms')
+def get_my_rooms():
+    user_id = get_current_user_id()
+    user_rooms = r.smembers(f"user:{user_id}:rooms") or set()
+    user_rooms.add("public")
+    
+    rooms_info = []
+    for room_id in user_rooms:
+        if room_id == 'public':
+            rooms_info.append({"id": "public", "name": "Public Chat"})
+        else:
+            room_meta = r.hgetall(f"chat:room:{room_id}")
+            display_name = room_meta.get("name", room_id) if room_meta else room_id
+            rooms_info.append({"id": room_id, "name": display_name})
+            
+    emit('rooms_list', {'rooms': rooms_info})
+
+@socketio.on('update_room')
+def update_room(data):
+    if not isinstance(data, dict):
+        return
+    user_id = get_current_user_id()
+    room = data.get('room')
+    new_name = data.get('name')
+    
+    if not room or room == 'public' or not new_name:
+        return
+
+    # Verify user membership/ownership
+    if room in r.smembers(f"user:{user_id}:rooms"):
+        r.hset(f"chat:room:{room}", "name", new_name.strip())
+        emit('room_updated', {'room': room, 'name': new_name.strip()}, to=room, include_self=True)
+
+@socketio.on('delete_room')
+def delete_room(data):
+    room = data.get('room') if isinstance(data, dict) else data
+    if not room or room == 'public':
+        return
+        
+    user_id = get_current_user_id()
+    
+    if room in r.smembers(f"user:{user_id}:rooms"):
+        # Delete message history and metadata
+        r.delete(f"chat:messages:{room}")
+        r.delete(f"chat:room:{room}")
+        
+        # Remove room from user's joined rooms set
+        r.srem(f"user:{user_id}:rooms", room)
+        
+        # Broadcast deletion to all sockets in the room
+        emit('room_deleted', {'room': room}, to=room, include_self=True)
 
 @socketio.on('connect')
 def handle_connect():

@@ -11,6 +11,7 @@
 ## What I Need to Fix
 
 1. Make it a globally persistent WebSocket connection with on-demand, room-based message history retrieval
+2. fix logic of creating rooms all created rooms must be privet 
 
 ## Open Questions
 
