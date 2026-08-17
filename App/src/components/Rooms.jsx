@@ -34,6 +34,9 @@ const Rooms = ({ currentRoom = 'public', onSelectRoom }) => {
                     if (exists) return prev;
                     return [...prev, newRoomObj];
                 });
+                // Copy invite link to clipboard automatically
+                const inviteUrl = `${window.location.origin}/chatbox?room=${data.room}`;
+                navigator.clipboard.writeText(inviteUrl).catch(() => {});
                 if (onSelectRoom) {
                     onSelectRoom(data.room);
                 }
@@ -196,6 +199,17 @@ const Rooms = ({ currentRoom = 'public', onSelectRoom }) => {
                                             className="text-xs text-zinc-400 hover:text-white transition-colors"
                                         >
                                             edit
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const url = `${window.location.origin}/chatbox?room=${room.id}`;
+                                                navigator.clipboard.writeText(url).catch(() => {});
+                                            }}
+                                            title="Copy invite link"
+                                            className="text-xs text-zinc-400 hover:text-white transition-colors"
+                                        >
+                                            link
                                         </button>
                                         <button
                                             onClick={(e) => handleDelete(e, room.id)}

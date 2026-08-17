@@ -9,7 +9,10 @@ const COLORS = {
 };
 
 function Chatbox() {
-    const [currentRoom, setCurrentRoom] = useState('public');
+    const params = new URLSearchParams(window.location.search);
+    const roomFromUrl = params.get('room');
+
+    const [currentRoom, setCurrentRoom] = useState(roomFromUrl || 'public');
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const scrollRef = useRef(null);
