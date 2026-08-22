@@ -1,18 +1,19 @@
 import './App.css'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import AnimatedArrows from './components/Arrows'
 import Chatbox from './components/Chatbox'
 import About from './components/About'
 
 
 export default function App() {
-  // If someone opens /?room=... (from an invite link), send them straight to the chat
-  const params = new URLSearchParams(window.location.search);
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
   const roomFromUrl = params.get('room');
-  if (roomFromUrl) {
+  
+  // Only redirect if they are on the root path to prevent infinite loops
+  if (roomFromUrl && location.pathname === '/') {
     return <Navigate to={`/chatbox?room=${roomFromUrl}`} replace />;
   }
-
   return (
     <Routes>
 

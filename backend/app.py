@@ -144,8 +144,20 @@ def handle_connect():
 @socketio.on('join_room')
 def handle_join_room(data):
     room = data.get('room', 'public') if isinstance(data, dict) else 'public'
+    user_id = get_current_user_id()
+
+    # Validate private room exists in Redis before allowing join
+    if room != 'public':
+        room_meta = r.hgetall(f"chat:room:{room}")
+        if not room_meta:
+            emit('join_error', {'room': room, 'message': 'Room not found or has been deleted.'})
+            return
+
+        # Persist membership so the guest keeps access after refresh/reconnect
+        r.sadd(f"user:{user_id}:rooms", room)
+
     flask_join_room(room)
-    print(f'Client {request.sid} joined room "{room}"')
+    print(f'Client {request.sid} (#{user_id}) joined room "{room}"')
     
     room_key = f"chat:messages:{room}"
     try:

@@ -15,6 +15,7 @@ function Chatbox() {
     const [currentRoom, setCurrentRoom] = useState(roomFromUrl || 'public');
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
+    const [joinError, setJoinError] = useState(null);
     const scrollRef = useRef(null);
     const nextId = useRef(1);
     const clientMsgId = useRef(0);
@@ -76,15 +77,35 @@ function Chatbox() {
             setMessages((prev) => [...prev, msg]);
         };
 
-        socket.on("initial history", handleHistory);
+        const handleJoinError = (data) => {
+            // The invite link points to a deleted or non-existent room
+            setJoinError(data?.message || 'Room not found.' + JSON.stringify(data));
+            console.log(data)
+            setCurrentRoom('public');
+            socket.emit('join_room', { room: 'public' });
+        };
+
+        const handleInitialHistory = (data) => {
+            // After successfully joining a private room via link, refresh the sidebar
+            const targetRoom = Array.isArray(data) ? 'public' : (data?.room || 'public');
+            if (targetRoom !== 'public') {
+                socket.emit('get_my_rooms');
+            }
+            handleHistory(data);
+        };
+
+        socket.on("initial history", handleInitialHistory);
         socket.on("chat message", handleMessage);
+        socket.on("join_error", handleJoinError);
 
         return () => {
             socket.off("connect", joinCurrentRoom);
-            socket.off("initial history", handleHistory);
+            socket.off("initial history", handleInitialHistory);
             socket.off("chat message", handleMessage);
+            socket.off("join_error", handleJoinError);
         };
-    }, [socket, myId, currentRoom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [socket, currentRoom]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -114,10 +135,10 @@ function Chatbox() {
 
         // Send to server with room identifier — server will stamp identity and echo back to room
         if (socket) {
-            socket.emit("chat message", { 
-                text: trimmed, 
+            socket.emit("chat message", {
+                text: trimmed,
                 clientMsgId: msgClientId,
-                room: currentRoom 
+                room: currentRoom
             });
         }
 
@@ -138,6 +159,18 @@ function Chatbox() {
             }}
             className="w-full h-full flex flex-row overflow-hidden flex-1"
         >
+            {joinError && (
+                <div
+                    style={{ backgroundColor: '#FF3535', color: '#fff', fontSize: 13 }}
+                    className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 font-semibold shadow-lg flex items-center gap-3"
+                >
+                    <span>⚠ {joinError}</span>
+                    <button
+                        onClick={() => setJoinError(null)}
+                        className="ml-2 font-bold opacity-80 hover:opacity-100"
+                    >✕</button>
+                </div>
+            )}
             <style>{`
         .pc-input::placeholder { color: rgba(255,255,255,0.3); }
         .pc-input:focus { border-color: rgba(255,255,255,0.6); }
@@ -146,7 +179,7 @@ function Chatbox() {
         .pc-scroll::-webkit-scrollbar-track { background: transparent; }
         .pc-scroll::-webkit-scrollbar-thumb { background: #656565; }
       `}</style>
-            
+
             {/* Rooms Sidebar */}
             <Rooms currentRoom={currentRoom} onSelectRoom={setCurrentRoom} />
 
