@@ -53,8 +53,8 @@ function Chatbox() {
             // Ignore messages meant for other rooms
             if (msg.room && msg.room !== currentRoom) return;
 
-            // If this is our own message echoed back, reconcile with the pending one
-            if (msg.clientMsgId !== undefined && msg.senderId === myId) {
+            // If this client sent the message, reconcile the pending optimistic message
+            if (msg.clientMsgId !== undefined) {
                 setMessages((prev) => {
                     const hasPending = prev.some(
                         (m) => m.pending && m.clientMsgId === msg.clientMsgId
@@ -62,17 +62,17 @@ function Chatbox() {
                     if (hasPending) {
                         return prev.map((m) =>
                             m.pending && m.clientMsgId === msg.clientMsgId
-                                ? { ...m, pending: false }
+                                ? { ...m, ...msg, pending: false }
                                 : m
                         );
                     }
-                    // Fallback: if not found in pending, treat as new message
+                    // Message from another client that happened to have clientMsgId
                     return [...prev, { ...msg, id: nextId.current++ }];
                 });
                 return;
             }
 
-            // Someone else's message — add it
+            // System message or fallback — add it
             msg.id = nextId.current++;
             setMessages((prev) => [...prev, msg]);
         };
