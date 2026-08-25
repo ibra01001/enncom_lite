@@ -8,6 +8,8 @@
 4. encrypted messages 
 5. Voice call peer to peer
 6. End-to-end encrypted calls and messages
+7. send images and videos they should be encrypted and not stored on the server and installed directly to the user's device.
+
 
 ## What I Need to Fix
 
