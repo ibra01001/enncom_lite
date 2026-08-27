@@ -2,6 +2,9 @@
 ├── app.py
 ├── architecture.txt
 ├── Dockerfile
-└── requirements.txt
+├── __pycache__
+│   └── app.cpython-314.pyc
+├── requirements.txt
+└── WebSocket_connection.md
 
-1 directory, 4 files
+2 directories, 6 files

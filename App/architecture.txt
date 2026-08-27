@@ -2,8 +2,8 @@
 ├── architecture.txt
 ├── dist
 │   ├── assets
-│   │   ├── index-9GTrqH3c.js
-│   │   └── index-CsOELX3A.css
+│   │   ├── index-CzBjeYrl.css
+│   │   └── index-DiSRVVDD.js
 │   ├── favicon.svg
 │   ├── icons.svg
 │   └── index.html
@@ -18,20 +18,33 @@
 ├── README.md
 ├── src
 │   ├── App.css
-│   ├── App.jsx
+│   ├── App.tsx
 │   ├── assets
 │   │   ├── hero.png
 │   │   ├── react.svg
 │   │   └── vite.svg
 │   ├── components
-│   │   ├── Arrows.jsx
-│   │   ├── Chatbox.jsx
-│   │   ├── Logo.jsx
-│   │   └── Navbar.jsx
+│   │   ├── About.tsx
+│   │   ├── Arrows.tsx
+│   │   ├── Chatbox.tsx
+│   │   ├── Logo.tsx
+│   │   ├── Navbar.tsx
+│   │   └── Rooms.tsx
+│   ├── context
+│   │   └── SocketContext.tsx
 │   ├── index.css
-│   └── main.jsx
-└── vite.config.js
+│   ├── main.tsx
+│   ├── types
+│   │   └── chat.ts
+│   └── vite-env.d.ts
+├── tsconfig.json
+├── tsconfig.node.json
+├── tsconfig.node.tsbuildinfo
+├── tsconfig.tsbuildinfo
+├── vite.config.d.ts
+├── vite.config.js
+└── vite.config.ts
 
-7 directories, 26 files
+9 directories, 37 files
 
 tree -I "node_modules|build|.git" > architecture.txt

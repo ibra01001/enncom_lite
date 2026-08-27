@@ -1,11 +1,10 @@
 .
-├── anonymous_id_via_socketID.md
 ├── App
 │   ├── architecture.txt
 │   ├── dist
 │   │   ├── assets
-│   │   │   ├── index-9GTrqH3c.js
-│   │   │   └── index-CsOELX3A.css
+│   │   │   ├── index-CzBjeYrl.css
+│   │   │   └── index-DiSRVVDD.js
 │   │   ├── favicon.svg
 │   │   ├── icons.svg
 │   │   └── index.html
@@ -20,31 +19,45 @@
 │   ├── README.md
 │   ├── src
 │   │   ├── App.css
-│   │   ├── App.jsx
+│   │   ├── App.tsx
 │   │   ├── assets
 │   │   │   ├── hero.png
 │   │   │   ├── react.svg
 │   │   │   └── vite.svg
 │   │   ├── components
-│   │   │   ├── About.jsx
-│   │   │   ├── Arrows.jsx
-│   │   │   ├── Chatbox.jsx
-│   │   │   ├── Logo.jsx
-│   │   │   ├── Navbar.jsx
-│   │   │   └── Rooms.jsx
+│   │   │   ├── About.tsx
+│   │   │   ├── Arrows.tsx
+│   │   │   ├── Chatbox.tsx
+│   │   │   ├── Logo.tsx
+│   │   │   ├── Navbar.tsx
+│   │   │   └── Rooms.tsx
 │   │   ├── context
-│   │   │   └── SocketContext.jsx
+│   │   │   └── SocketContext.tsx
 │   │   ├── index.css
-│   │   └── main.jsx
-│   └── vite.config.js
+│   │   ├── main.tsx
+│   │   ├── types
+│   │   │   └── chat.ts
+│   │   └── vite-env.d.ts
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── tsconfig.node.tsbuildinfo
+│   ├── tsconfig.tsbuildinfo
+│   ├── vite.config.d.ts
+│   ├── vite.config.js
+│   └── vite.config.ts
 ├── architecture.txt
 ├── backend
 │   ├── app.py
 │   ├── architecture.txt
 │   ├── Dockerfile
-│   └── requirements.txt
+│   ├── __pycache__
+│   │   └── app.cpython-314.pyc
+│   ├── requirements.txt
+│   └── WebSocket_connection.md
 ├── docker-compose.yml
 ├── futurePlan.md
-└── README.md
+├── Privet_Rooms_crud.md
+├── README.md
+└── SomeTypesOfE2EE.md
 
-10 directories, 38 files
+12 directories, 49 files
