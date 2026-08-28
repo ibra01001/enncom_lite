@@ -30,7 +30,7 @@
 
 ## What is ENCCOM?
 
-ENCCOM is a chat app focused on keeping conversations private. No blockchain, no crypto-wallet weirdness, no decentralized network to babysit — just a normal, understandable app that takes encryption seriously where it actually matters.
+ENCCOM is a chat app focused on protecting users so they they can chat safely no data colected no account needed keeping conversations private. No blockchain, no crypto-wallet weirdness, no decentralized network to babysit — just a normal, understandable app that takes encryption seriously where it actually matters.
 
 It has three main things you can do:
 
