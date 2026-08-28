@@ -31,11 +31,23 @@
 │   │   ├── Navbar.tsx
 │   │   └── Rooms.tsx
 │   ├── context
+│   │   ├── MlsContext.md
+│   │   ├── MlsContext.tsx
 │   │   └── SocketContext.tsx
 │   ├── index.css
 │   ├── main.tsx
+│   ├── pkg
+│   │   ├── openmls_wasm_bg.wasm
+│   │   ├── openmls_wasm_bg.wasm.d.ts
+│   │   ├── openmls_wasm.d.ts
+│   │   ├── openmls_wasm.js
+│   │   ├── package.json
+│   │   └── README.md
 │   ├── types
 │   │   └── chat.ts
+│   ├── utils
+│   │   ├── mlsUtils.md
+│   │   └── mlsUtils.ts
 │   └── vite-env.d.ts
 ├── tsconfig.json
 ├── tsconfig.node.json
@@ -45,6 +57,4 @@
 ├── vite.config.js
 └── vite.config.ts
 
-9 directories, 37 files
-
-tree -I "node_modules|build|.git" > architecture.txt
+11 directories, 47 files

@@ -32,6 +32,8 @@
 │   │   │   ├── Navbar.tsx
 │   │   │   └── Rooms.tsx
 │   │   ├── context
+│   │   │   ├── MlsContext.md
+│   │   │   ├── MlsContext.tsx
 │   │   │   └── SocketContext.tsx
 │   │   ├── index.css
 │   │   ├── main.tsx
@@ -44,6 +46,9 @@
 │   │   │   └── README.md
 │   │   ├── types
 │   │   │   └── chat.ts
+│   │   ├── utils
+│   │   │   ├── mlsUtils.md
+│   │   │   └── mlsUtils.ts
 │   │   └── vite-env.d.ts
 │   ├── tsconfig.json
 │   ├── tsconfig.node.json
@@ -63,6 +68,7 @@
 │   └── WebSocket_connection.md
 ├── docker-compose.yml
 ├── futurePlan.md
+├── openmlsUsage.md
 ├── openmls-wasm
 │   ├── build.sh
 │   ├── Cargo.toml
@@ -84,4 +90,4 @@
 ├── README.md
 └── SomeTypesOfE2EE.md
 
-17 directories, 68 files
+18 directories, 73 files
