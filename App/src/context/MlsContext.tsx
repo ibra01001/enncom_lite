@@ -17,6 +17,10 @@ import init, {
 import { useSocket } from './SocketContext';
 import { bytesToBase64, base64ToBytes } from '../utils/mlsUtils';
 
+// ============================================================================
+// PART 1: Context & Hook Definition
+// ============================================================================
+
 export interface MlsContextType {
   isInitialized: boolean;
   provider: Provider | null;
@@ -47,6 +51,7 @@ const MlsContext = createContext<MlsContextType>({
   hasGroup: () => false,
 });
 
+// Custom hook to consume MLS context across components
 // eslint-disable-next-line react-refresh/only-export-components
 export const useMls = (): MlsContextType => {
   return useContext(MlsContext);
@@ -58,15 +63,23 @@ interface MlsProviderProps {
 
 export const MlsProvider = ({ children }: MlsProviderProps) => {
   const { socket, myId } = useSocket();
+
+  // ============================================================================
+  // PART 2: State & Reference Management
+  // ============================================================================
+
+  // Reactive state
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [provider, setProvider] = useState<Provider | null>(null);
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [activeGroups, setActiveGroups] = useState<Map<string, Group>>(new Map());
 
+  // Mutable refs to prevent stale closures in async callbacks/socket handlers
   const groupsRef = useRef<Map<string, Group>>(activeGroups);
   const providerRef = useRef<Provider | null>(null);
   const identityRef = useRef<Identity | null>(null);
 
+  // Synchronize refs with state updates
   useEffect(() => {
     groupsRef.current = activeGroups;
   }, [activeGroups]);
@@ -79,7 +92,11 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     identityRef.current = identity;
   }, [identity]);
 
-  // Initialize WASM module and user identity when myId becomes available
+  // ============================================================================
+  // PART 3: Automated Lifecycle & Side Effects
+  // ============================================================================
+
+  // Effect A: Initialize WASM module, create Identity, and publish KeyPackage
   useEffect(() => {
     let isCancelled = false;
 
@@ -97,7 +114,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         setIdentity(mlsIdentity);
         setIsInitialized(true);
 
-        // Publish KeyPackage to server if socket is connected
+        // Publish KeyPackage to server once identity is ready
         if (socket) {
           const keyPackage = mlsIdentity.key_package(mlsProvider);
           const keyPackageB64 = bytesToBase64(keyPackage.to_bytes());
@@ -115,7 +132,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     };
   }, [myId, socket]);
 
-  // Listen for incoming welcome packages to automatically join groups
+  // Effect B: Listen for incoming 'mls_welcome' socket events to auto-join groups
   useEffect(() => {
     if (!socket || !provider) return;
 
@@ -156,6 +173,11 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     };
   }, [socket, myId, provider]);
 
+  // ============================================================================
+  // PART 4: Cryptographic Action Methods
+  // ============================================================================
+
+  // 1. Create a new encrypted MLS group for a room
   const createGroup = useCallback((roomId: string): Group | null => {
     const currentProvider = providerRef.current;
     const currentIdentity = identityRef.current;
@@ -179,6 +201,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     }
   }, []);
 
+  // 2. Join an existing group using received Welcome + RatchetTree packages
   const joinGroupFromWelcome = useCallback(
     (roomId: string, welcomeB64: string, treeB64: string): Group | null => {
       const currentProvider = providerRef.current;
@@ -207,6 +230,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     []
   );
 
+  // 3. Add a new member to an existing group and emit welcome packet
   const inviteUserToGroup = useCallback(
     (
       roomId: string,
@@ -255,6 +279,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     [socket]
   );
 
+  // 4. Encrypt plaintext string into Base64 ciphertext
   const encryptMessage = useCallback((roomId: string, plaintext: string): string | null => {
     const currentProvider = providerRef.current;
     const currentIdentity = identityRef.current;
@@ -278,6 +303,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     }
   }, []);
 
+  // 5. Decrypt Base64 ciphertext back to plaintext string
   const decryptMessage = useCallback(
     (roomId: string, ciphertextB64: string): string | null => {
       const currentProvider = providerRef.current;
@@ -299,9 +325,14 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     []
   );
 
+  // 6. Check if an active group session exists for a given room
   const hasGroup = useCallback((roomId: string): boolean => {
     return groupsRef.current.has(roomId);
   }, []);
+
+  // ============================================================================
+  // PART 5: Provider Rendering & Value Export
+  // ============================================================================
 
   return (
     <MlsContext.Provider
