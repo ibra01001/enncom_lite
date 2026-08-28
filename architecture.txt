@@ -35,6 +35,13 @@
 │   │   │   └── SocketContext.tsx
 │   │   ├── index.css
 │   │   ├── main.tsx
+│   │   ├── pkg
+│   │   │   ├── openmls_wasm_bg.wasm
+│   │   │   ├── openmls_wasm_bg.wasm.d.ts
+│   │   │   ├── openmls_wasm.d.ts
+│   │   │   ├── openmls_wasm.js
+│   │   │   ├── package.json
+│   │   │   └── README.md
 │   │   ├── types
 │   │   │   └── chat.ts
 │   │   └── vite-env.d.ts
@@ -56,8 +63,25 @@
 │   └── WebSocket_connection.md
 ├── docker-compose.yml
 ├── futurePlan.md
+├── openmls-wasm
+│   ├── build.sh
+│   ├── Cargo.toml
+│   ├── check-size.sh
+│   ├── pkg
+│   │   ├── openmls_wasm_bg.wasm
+│   │   ├── openmls_wasm_bg.wasm.d.ts
+│   │   ├── openmls_wasm.d.ts
+│   │   ├── openmls_wasm.js
+│   │   ├── package.json
+│   │   └── README.md
+│   ├── README.md
+│   ├── src
+│   │   ├── lib.rs
+│   │   └── utils.rs
+│   └── static
+│       └── index.html
 ├── Privet_Rooms_crud.md
 ├── README.md
 └── SomeTypesOfE2EE.md
 
-12 directories, 49 files
+17 directories, 68 files
