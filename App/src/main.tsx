@@ -5,6 +5,7 @@ import './index.css';
 import App from './App';
 import Navbar from './components/Navbar';
 import { SocketProvider } from './context/SocketContext';
+import { MlsProvider } from './context/MlsContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,10 +15,12 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <SocketProvider>
-      <BrowserRouter>
-        <Navbar />
-        <App />
-      </BrowserRouter>
+      <MlsProvider>
+        <BrowserRouter>
+          <Navbar />
+          <App />
+        </BrowserRouter>
+      </MlsProvider>
     </SocketProvider>
   </StrictMode>
 );
