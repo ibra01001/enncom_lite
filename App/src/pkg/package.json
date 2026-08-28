@@ -1,0 +1,23 @@
+{
+  "name": "openmls-wasm",
+  "type": "module",
+  "collaborators": [
+    "OpenMLS Authors"
+  ],
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openmls/openmls/tree/main/openmls-wasm"
+  },
+  "files": [
+    "openmls_wasm_bg.wasm",
+    "openmls_wasm.js",
+    "openmls_wasm.d.ts"
+  ],
+  "main": "openmls_wasm.js",
+  "types": "openmls_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
