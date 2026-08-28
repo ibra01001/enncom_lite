@@ -1,0 +1,21 @@
+[package]
+name = "enncom-lite"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# La bibliothèque principale (Logique MLS)
+openmls = { version = "0.9.0", features = ["js"] }
+
+# Le fournisseur de cryptographie (Calculs)
+openmls_rust_crypto = "0.6.0"
+
+# Le lien vers le navigateur (WASM)
+wasm-bindgen = "0.2"
+
+# Obligatoire pour que la crypto fonctionne dans un navigateur
+getrandom = { version = "0.2", features = ["js"] }
+chrono = { version = "0.4", features = ["wasmbind"] }
