@@ -1,4 +1,4 @@
-Flask
-Flask-SocketIO
-Flask-Cors
+flask
+flask-socketio
+flask-cors
 redis
