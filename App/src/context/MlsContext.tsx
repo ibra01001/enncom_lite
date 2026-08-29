@@ -5,6 +5,7 @@ import {
   useState,
   useRef,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
 import init, {
@@ -107,11 +108,21 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         await init();
         if (isCancelled) return;
 
-        const mlsProvider = new Provider();
-        const mlsIdentity = new Identity(mlsProvider, myId);
+        let mlsProvider = providerRef.current;
+        let mlsIdentity = identityRef.current;
 
-        setProvider(mlsProvider);
-        setIdentity(mlsIdentity);
+        if (!mlsProvider) {
+          mlsProvider = new Provider();
+          setProvider(mlsProvider);
+          providerRef.current = mlsProvider;
+        }
+
+        if (!mlsIdentity) {
+          mlsIdentity = new Identity(mlsProvider, myId);
+          setIdentity(mlsIdentity);
+          identityRef.current = mlsIdentity;
+        }
+
         setIsInitialized(true);
 
         // Publish KeyPackage to server once identity is ready
@@ -148,6 +159,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
       try {
         const prov = providerRef.current;
+        const ident = identityRef.current;
         if (!prov) return;
 
         const welcomeBytes = base64ToBytes(data.welcome);
@@ -161,6 +173,13 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           updated.set(data.roomId, joinedGroup);
           return updated;
         });
+
+        // Replenish our published KeyPackage for future room invites
+        if (ident && socket) {
+          const newKp = ident.key_package(prov);
+          const newKpB64 = bytesToBase64(newKp.to_bytes());
+          socket.emit('publish_key_package', { keyPackage: newKpB64 });
+        }
       } catch (err) {
         console.error(`Failed to join MLS group for room ${data.roomId}:`, err);
       }
@@ -190,6 +209,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
         const commitBytes = base64ToBytes(data.commit);
         group.process_message(prov, commitBytes);
+        setActiveGroups((prev) => new Map(prev));
       } catch (err) {
         console.error(`Failed to process MLS commit for room ${data.roomId}:`, err);
       }
@@ -201,6 +221,84 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       socket.off('mls_commit', handleMlsCommit);
     };
   }, [socket, provider]);
+
+  // Effect D: Listen for 'peer_joined' and automated KeyPackage handshake
+  useEffect(() => {
+    if (!socket || !provider) return;
+
+    interface PeerJoinedPayload {
+      peerId: string;
+      room: string;
+    }
+
+    interface KeyPackageResponsePayload {
+      userId: string;
+      roomId?: string;
+      keyPackage?: string;
+    }
+
+    // When an existing group member detects a new peer entering the room
+    const handlePeerJoined = (data: PeerJoinedPayload) => {
+      if (!data?.room || data.room === 'public' || data.peerId === myId) return;
+
+      const group = groupsRef.current.get(data.room);
+      // If we are active in this group, fetch the new peer's KeyPackage to invite them
+      if (group) {
+        socket.emit('get_key_package', {
+          userId: data.peerId,
+          roomId: data.room,
+        });
+      }
+    };
+
+    // When backend returns the requested KeyPackage for a peer
+    const handleKeyPackageResponse = (data: KeyPackageResponsePayload) => {
+      if (!data?.keyPackage || !data?.roomId || !data?.userId) return;
+
+      const group = groupsRef.current.get(data.roomId);
+      const prov = providerRef.current;
+      const ident = identityRef.current;
+
+      if (group && prov && ident) {
+        try {
+          const targetKeyBytes = base64ToBytes(data.keyPackage);
+          const targetKeyPackage = KeyPackage.from_bytes(targetKeyBytes);
+
+          const addMessages = group.propose_and_commit_add(prov, ident, targetKeyPackage);
+          group.merge_pending_commit(prov);
+
+          const tree = group.export_ratchet_tree();
+          const welcomeB64 = bytesToBase64(addMessages.welcome);
+          const treeB64 = bytesToBase64(tree.to_bytes());
+          const commitB64 = bytesToBase64(addMessages.commit);
+
+          socket.emit('send_welcome', {
+            targetUserId: data.userId,
+            roomId: data.roomId,
+            welcome: welcomeB64,
+            tree: treeB64,
+          });
+
+          socket.emit('send_commit', {
+            roomId: data.roomId,
+            commit: commitB64,
+          });
+
+          setActiveGroups((prev) => new Map(prev));
+        } catch (err) {
+          console.error(`Failed to auto-invite peer ${data.userId} to room ${data.roomId}:`, err);
+        }
+      }
+    };
+
+    socket.on('peer_joined', handlePeerJoined);
+    socket.on('key_package_response', handleKeyPackageResponse);
+
+    return () => {
+      socket.off('peer_joined', handlePeerJoined);
+      socket.off('key_package_response', handleKeyPackageResponse);
+    };
+  }, [socket, provider, myId]);
 
   // ============================================================================
   // PART 4: Cryptographic Action Methods
@@ -214,6 +312,10 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     if (!currentProvider || !currentIdentity) {
       console.warn('MLS Provider or Identity not ready to create group');
       return null;
+    }
+
+    if (groupsRef.current.has(roomId)) {
+      return groupsRef.current.get(roomId) ?? null;
     }
 
     try {
@@ -373,25 +475,35 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     return groupsRef.current.has(roomId);
   }, []);
 
-  // ============================================================================
-  // PART 5: Provider Rendering & Value Export
-  // ============================================================================
+  const contextValue = useMemo(
+    () => ({
+      isInitialized,
+      provider,
+      identity,
+      activeGroups,
+      createGroup,
+      joinGroupFromWelcome,
+      inviteUserToGroup,
+      encryptMessage,
+      decryptMessage,
+      hasGroup,
+    }),
+    [
+      isInitialized,
+      provider,
+      identity,
+      activeGroups,
+      createGroup,
+      joinGroupFromWelcome,
+      inviteUserToGroup,
+      encryptMessage,
+      decryptMessage,
+      hasGroup,
+    ]
+  );
 
   return (
-    <MlsContext.Provider
-      value={{
-        isInitialized,
-        provider,
-        identity,
-        activeGroups,
-        createGroup,
-        joinGroupFromWelcome,
-        inviteUserToGroup,
-        encryptMessage,
-        decryptMessage,
-        hasGroup,
-      }}
-    >
+    <MlsContext.Provider value={contextValue}>
       {children}
     </MlsContext.Provider>
   );

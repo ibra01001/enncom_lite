@@ -161,6 +161,10 @@ def handle_join_room(data):
     flask_join_room(room)
     print(f'Client {request.sid} (#{user_id}) joined room "{room}"')
     
+    # Notify existing room members that a new peer joined so they can initiate MLS welcome exchange
+    if room != 'public':
+        emit('peer_joined', {'peerId': user_id, 'room': room}, to=room, include_self=False)
+
     room_key = f"chat:messages:{room}"
     try:
         raw_history = r.lrange(room_key, 0, MAX_HISTORY - 1)
@@ -186,7 +190,8 @@ def handle_message(msg):
     msg.pop('username', None)           # ignore any client-sent username
     msg['senderId'] = sender_id         # stamp with server identity
     msg['room'] = room
-    print(f'[{room}][#{sender_id}] {msg["text"]}')
+    log_content = msg.get('text') or '[encrypted payload]'
+    print(f'[{room}][#{sender_id}] {log_content}')
 
     # Save to Redis under room-specific key
     room_key = f"chat:messages:{room}"
@@ -212,14 +217,25 @@ def handle_publish_key(data):
     if key_package_b64:
         r.set(f"user:{user_id}:keypackage", key_package_b64, ex=TTL_SECONDS)
         print(f"Key package registered for user #{user_id}")
- # ! we need  to check this function later
+        
+        # Notify room members that this user's KeyPackage is ready for MLS invitation
+        user_rooms = r.smembers(f"user:{user_id}:rooms") or set()
+        for rm in user_rooms:
+            if rm != 'public':
+                emit('peer_joined', {'peerId': user_id, 'room': rm}, to=rm, include_self=False)
+
 @socketio.on('get_key_package')
 def handle_get_key(data):
     if not isinstance(data, dict):
         return
     target_user_id = data.get('userId')
+    room_id = data.get('roomId')
     key_package_b64 = r.get(f"user:{target_user_id}:keypackage")
-    emit('key_package_response', {'userId': target_user_id, 'keyPackage': key_package_b64})
+    emit('key_package_response', {
+        'userId': target_user_id,
+        'roomId': room_id,
+        'keyPackage': key_package_b64
+    })
 
 @socketio.on('send_welcome')
 def handle_send_welcome(data):

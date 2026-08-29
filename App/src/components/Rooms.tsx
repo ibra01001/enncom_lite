@@ -7,6 +7,8 @@ import type {
   RoomUpdatedPayload,
   RoomDeletedPayload,
 } from '../types/chat';
+import { useMls } from '../context/MlsContext';
+
 
 const COLORS = {
   bg: '#1e1e1e',
@@ -21,6 +23,7 @@ interface RoomsProps {
 
 const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
   const { socket } = useSocket();
+  const { createGroup } = useMls();
   const [rooms, setRooms] = useState<Room[]>([{ id: 'public', name: 'Public Chat' }]);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [newRoomName, setNewRoomName] = useState<string>('');
@@ -40,6 +43,7 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
 
     const handleRoomCreated = (data: RoomCreatedPayload) => {
       if (data?.room) {
+        createGroup(data.room);
         const newRoomObj: Room = { id: data.room, name: data.name || data.room };
         setRooms((prev) => {
           const exists = prev.some((r) => r.id === data.room);
@@ -48,7 +52,7 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
         });
         // Copy invite link to clipboard automatically
         const inviteUrl = `${window.location.origin}/chatbox?room=${data.room}`;
-        navigator.clipboard.writeText(inviteUrl).catch(() => {});
+        navigator.clipboard.writeText(inviteUrl).catch(() => { });
         if (onSelectRoom) {
           onSelectRoom(data.room);
         }
@@ -194,9 +198,8 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
               key={room.id}
               onClick={() => onSelectRoom && onSelectRoom(room.id)}
               style={{ borderLeft: isActive ? `3px solid ${COLORS.accent}` : '3px solid transparent' }}
-              className={`${
-                isActive ? 'bg-[#2A2A2A] text-white' : 'bg-transparent text-zinc-400 hover:text-white hover:bg-[#252525]'
-              } px-4 py-3 flex items-center justify-between font-semibold text-sm cursor-pointer transition-colors group`}
+              className={`${isActive ? 'bg-[#2A2A2A] text-white' : 'bg-transparent text-zinc-400 hover:text-white hover:bg-[#252525]'
+                } px-4 py-3 flex items-center justify-between font-semibold text-sm cursor-pointer transition-colors group`}
             >
               <span className="flex items-center gap-2 truncate">
                 <span style={{ color: COLORS.accent }}>#</span> {room.name}
@@ -217,7 +220,7 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
                       onClick={(e) => {
                         e.stopPropagation();
                         const url = `${window.location.origin}/chatbox?room=${room.id}`;
-                        navigator.clipboard.writeText(url).catch(() => {});
+                        navigator.clipboard.writeText(url).catch(() => { });
                       }}
                       title="Copy invite link"
                       className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"

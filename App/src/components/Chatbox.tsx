@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type FC, type KeyboardEvent } from 'react';
 import { useSocket } from '../context/SocketContext';
 import Rooms from './Rooms';
+import { useMls } from '../context/MlsContext';
 import type {
   Message,
   HistoryPayload,
@@ -14,10 +15,10 @@ const COLORS = {
 };
 
 const Chatbox: FC = () => {
-  const params = new URLSearchParams(window.location.search);
-  const roomFromUrl = params.get('room');
-
-  const [currentRoom, setCurrentRoom] = useState<string>(roomFromUrl || 'public');
+  const [currentRoom, setCurrentRoom] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('room') || 'public';
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>('');
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -25,6 +26,7 @@ const Chatbox: FC = () => {
   const nextId = useRef<number>(1);
   const clientMsgId = useRef<number>(0);
   const { socket, myId } = useSocket();
+  const { hasGroup, encryptMessage, decryptMessage } = useMls();
 
   useEffect(() => {
     if (!socket) return;
@@ -46,10 +48,18 @@ const Chatbox: FC = () => {
       const targetRoom = Array.isArray(data) ? 'public' : data?.room || 'public';
 
       if (targetRoom === currentRoom && historyMsgs.length >= 0) {
-        const formatted: Message[] = historyMsgs.map((msg) => ({
-          ...msg,
-          id: msg.id || nextId.current++,
-        }));
+        const formatted: Message[] = historyMsgs.map((msg) => {
+          let displayText = msg.text;
+          if (msg.ciphertext) {
+            const decrypted = decryptMessage(targetRoom, msg.ciphertext);
+            displayText = decrypted || '[Encrypted Message]';
+          }
+          return {
+            ...msg,
+            text: displayText ?? '',
+            id: msg.id || nextId.current++,
+          };
+        });
         setMessages(formatted);
       }
     };
@@ -67,18 +77,34 @@ const Chatbox: FC = () => {
           if (hasPending) {
             return prev.map((m) =>
               m.pending && m.clientMsgId === msg.clientMsgId
-                ? { ...m, ...msg, pending: false }
+                ? { ...m, ...msg, text: m.text || msg.text, pending: false }
                 : m
             );
           }
           // Message from another client that happened to have clientMsgId
-          return [...prev, { ...msg, id: nextId.current++ }];
+          let displayText = msg.text;
+          if (msg.ciphertext) {
+            const decrypted = decryptMessage(msg.room || currentRoom, msg.ciphertext);
+            displayText = decrypted || '[Unable to decrypt]';
+          }
+          return [...prev, { ...msg, text: displayText ?? '', id: nextId.current++ }];
         });
         return;
       }
 
-      // System message or fallback — add it
-      const newMsg: Message = { ...msg, id: nextId.current++ };
+      // Decrypt incoming message if it contains ciphertext
+      let displayText = msg.text;
+      if (msg.ciphertext) {
+        const decrypted = decryptMessage(msg.room || currentRoom, msg.ciphertext);
+        displayText = decrypted || '[Unable to decrypt]';
+      }
+
+      // System message or other client's message
+      const newMsg: Message = {
+        ...msg,
+        text: displayText ?? '',
+        id: nextId.current++,
+      };
       setMessages((prev) => [...prev, newMsg]);
     };
 
@@ -108,13 +134,16 @@ const Chatbox: FC = () => {
       socket.off('chat message', handleMessage);
       socket.off('join_error', handleJoinError);
     };
-  }, [socket, currentRoom]);
+  }, [socket, currentRoom, decryptMessage]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const isPrivateRoom = currentRoom !== 'public';
+  const isGroupActive = hasGroup(currentRoom);
 
   const handleSend = () => {
     const trimmed = input.trim();
@@ -123,26 +152,61 @@ const Chatbox: FC = () => {
     const msgClientId = clientMsgId.current++;
     const localId = nextId.current++;
 
-    // Optimistic: add to UI immediately with pending state
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: localId,
-        clientMsgId: msgClientId,
-        senderId: myId,
-        text: trimmed,
-        room: currentRoom,
-        pending: true,
-      },
-    ]);
+    if (isPrivateRoom) {
+      if (!isGroupActive) {
+        setJoinError("You are not a member of this MLS group or encryption is still initializing.");
+        return;
+      }
 
-    // Send to server with room identifier
-    if (socket) {
-      socket.emit('chat message', {
-        text: trimmed,
-        clientMsgId: msgClientId,
-        room: currentRoom,
-      });
+      const ciphertext = encryptMessage(currentRoom, trimmed);
+      if (!ciphertext) {
+        setJoinError("Failed to encrypt message with OpenMLS.");
+        return;
+      }
+
+      // Optimistic message in UI
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: localId,
+          clientMsgId: msgClientId,
+          senderId: myId,
+          text: trimmed,
+          ciphertext,
+          room: currentRoom,
+          pending: true,
+        },
+      ]);
+
+      // Emit encrypted payload to server
+      if (socket) {
+        socket.emit('chat message', {
+          ciphertext,
+          clientMsgId: msgClientId,
+          room: currentRoom,
+        });
+      }
+    } else {
+      // Public room: unencrypted message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: localId,
+          clientMsgId: msgClientId,
+          senderId: myId,
+          text: trimmed,
+          room: currentRoom,
+          pending: true,
+        },
+      ]);
+
+      if (socket) {
+        socket.emit('chat message', {
+          text: trimmed,
+          clientMsgId: msgClientId,
+          room: currentRoom,
+        });
+      }
     }
 
     setInput('');
@@ -198,11 +262,24 @@ const Chatbox: FC = () => {
           }}
           className="h-14 shrink-0 flex items-center justify-between px-6"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <h4 className="text-white font-bold text-base m-0 capitalize">
               #{currentRoom === 'public' ? 'Public Chat' : currentRoom}
             </h4>
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            {isPrivateRoom ? (
+              <span
+                className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded flex items-center gap-1 ${isGroupActive
+                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/50'
+                    : 'bg-amber-950 text-amber-400 border border-amber-700/50'
+                  }`}
+              >
+                <span>{isGroupActive ? 'E2EE Active' : 'Awaiting Keys'}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
+                Public Unencrypted
+              </span>
+            )}
           </div>
           <span style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs font-mono font-semibold">
             You are #{myId ?? '...'}
@@ -219,9 +296,21 @@ const Chatbox: FC = () => {
                 className="flex flex-col gap-0.5"
                 style={{ opacity: msg.pending ? 0.5 : 1 }}
               >
-                <span style={{ color: isOwn ? COLORS.accent : 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
-                  #{msg.senderId}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span style={{ color: isOwn ? COLORS.accent : 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
+                    #{msg.senderId}
+                  </span>
+                  {msg.ciphertext && (
+                    <span className="text-[10px] text-emerald-400 font-mono font-semibold" title="End-to-End Encrypted via OpenMLS">
+                      [enc]
+                    </span>
+                  )}
+                  {msg.pending && (
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      sending...
+                    </span>
+                  )}
+                </div>
                 <p className="text-white text-sm leading-relaxed break-words m-0">
                   {msg.text}
                 </p>
@@ -240,7 +329,13 @@ const Chatbox: FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message"
+            placeholder={
+              isPrivateRoom && !isGroupActive
+                ? "Connecting to MLS group session..."
+                : isPrivateRoom
+                  ? "Send encrypted message..."
+                  : "Send public message..."
+            }
             aria-label="Message"
             style={{
               backgroundColor: COLORS.bg,
@@ -253,13 +348,13 @@ const Chatbox: FC = () => {
           <button
             type="button"
             onClick={handleSend}
-            disabled={isEmpty}
+            disabled={isEmpty || (isPrivateRoom && !isGroupActive)}
             style={{
               backgroundColor: COLORS.secondary,
               border: `1px solid ${COLORS.secondary}`,
               borderRadius: 0,
-              opacity: isEmpty ? 0.5 : undefined,
-              cursor: isEmpty ? 'not-allowed' : 'pointer',
+              opacity: isEmpty || (isPrivateRoom && !isGroupActive) ? 0.5 : undefined,
+              cursor: isEmpty || (isPrivateRoom && !isGroupActive) ? 'not-allowed' : 'pointer',
             }}
             className="pc-btn text-white text-sm font-bold px-6 py-2.5 shrink-0 hover:opacity-80 active:opacity-70 transition-opacity"
           >

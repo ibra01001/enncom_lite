@@ -4,7 +4,8 @@ export interface Message {
   id: string | number;
   clientMsgId?: number;
   senderId?: string | null;
-  text: string;
+  text?: string;
+  ciphertext?: string;
   room?: string;
   pending?: boolean;
 }
