@@ -173,6 +173,35 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     };
   }, [socket, myId, provider]);
 
+  // Effect C: Listen for incoming 'mls_commit' socket events to update group epoch
+  useEffect(() => {
+    if (!socket || !provider) return;
+
+    interface CommitPayload {
+      roomId: string;
+      commit: string;
+    }
+
+    const handleMlsCommit = (data: CommitPayload) => {
+      try {
+        const prov = providerRef.current;
+        const group = groupsRef.current.get(data.roomId);
+        if (!prov || !group) return;
+
+        const commitBytes = base64ToBytes(data.commit);
+        group.process_message(prov, commitBytes);
+      } catch (err) {
+        console.error(`Failed to process MLS commit for room ${data.roomId}:`, err);
+      }
+    };
+
+    socket.on('mls_commit', handleMlsCommit);
+
+    return () => {
+      socket.off('mls_commit', handleMlsCommit);
+    };
+  }, [socket, provider]);
+
   // ============================================================================
   // PART 4: Cryptographic Action Methods
   // ============================================================================
@@ -260,13 +289,21 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         const tree = group.export_ratchet_tree();
         const welcomeB64 = bytesToBase64(addMessages.welcome);
         const treeB64 = bytesToBase64(tree.to_bytes());
+        const commitB64 = bytesToBase64(addMessages.commit);
 
         if (socket) {
+          // Send Welcome + RatchetTree to the new member
           socket.emit('send_welcome', {
             targetUserId,
             roomId,
             welcome: welcomeB64,
             tree: treeB64,
+          });
+
+          // Broadcast Commit to existing members so their ratchet tree / epoch stays in sync
+          socket.emit('send_commit', {
+            roomId,
+            commit: commitB64,
           });
         }
 
@@ -316,7 +353,13 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       try {
         const ciphertextBytes = base64ToBytes(ciphertextB64);
         const decryptedBytes = group.process_message(currentProvider, ciphertextBytes);
-        return new TextDecoder().decode(decryptedBytes);
+        
+        // Non-application / control messages produce no decrypted text
+        if (!decryptedBytes || decryptedBytes.length === 0) {
+          return null;
+        }
+
+        return new TextDecoder('utf-8', { fatal: true }).decode(decryptedBytes);
       } catch (err) {
         console.error(`Failed to decrypt message for room ${roomId}:`, err);
         return null;

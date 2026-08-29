@@ -201,5 +201,41 @@ def handle_message(msg):
     # Emit message to all clients in the room
     emit('chat message', msg, to=room, include_self=True)
 
+# ============================================================================
+# MLS E2EE Socket Handlers
+# ============================================================================
+
+@socketio.on('publish_key_package')
+def handle_publish_key(data):
+    user_id = get_current_user_id()
+    key_package_b64 = data.get('keyPackage') if isinstance(data, dict) else None
+    if key_package_b64:
+        r.set(f"user:{user_id}:keypackage", key_package_b64, ex=TTL_SECONDS)
+        print(f"Key package registered for user #{user_id}")
+
+@socketio.on('get_key_package')
+def handle_get_key(data):
+    if not isinstance(data, dict):
+        return
+    target_user_id = data.get('userId')
+    key_package_b64 = r.get(f"user:{target_user_id}:keypackage")
+    emit('key_package_response', {'userId': target_user_id, 'keyPackage': key_package_b64})
+
+@socketio.on('send_welcome')
+def handle_send_welcome(data):
+    if not isinstance(data, dict):
+        return
+    room = data.get('roomId')
+    # Broadcast welcome packet so the target user receives it
+    emit('mls_welcome', data, to=room, include_self=False)
+
+@socketio.on('send_commit')
+def handle_send_commit(data):
+    if not isinstance(data, dict):
+        return
+    room = data.get('roomId')
+    # Broadcast commit to all other room members so their RatchetTree stays synchronized
+    emit('mls_commit', data, to=room, include_self=False)
+
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
