@@ -212,7 +212,7 @@ def handle_publish_key(data):
     if key_package_b64:
         r.set(f"user:{user_id}:keypackage", key_package_b64, ex=TTL_SECONDS)
         print(f"Key package registered for user #{user_id}")
-
+ # ! we need  to check this function later
 @socketio.on('get_key_package')
 def handle_get_key(data):
     if not isinstance(data, dict):
