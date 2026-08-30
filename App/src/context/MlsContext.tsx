@@ -168,6 +168,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
         const joinedGroup = Group.join(prov, welcomeBytes, ratchetTree);
 
+        groupsRef.current.set(data.roomId, joinedGroup);
         setActiveGroups((prev) => {
           const updated = new Map(prev);
           updated.set(data.roomId, joinedGroup);
@@ -211,7 +212,8 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         group.process_message(prov, commitBytes);
         setActiveGroups((prev) => new Map(prev));
       } catch (err) {
-        console.error(`Failed to process MLS commit for room ${data.roomId}:`, err);
+        // Ignored if commit was from our own add or already processed epoch
+        console.debug(`MLS commit processed/ignored for room ${data.roomId}`);
       }
     };
 
@@ -223,6 +225,8 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
   }, [socket, provider]);
 
   // Effect D: Listen for 'peer_joined' and automated KeyPackage handshake
+  const invitedPeersRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (!socket || !provider) return;
 
@@ -241,9 +245,12 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     const handlePeerJoined = (data: PeerJoinedPayload) => {
       if (!data?.room || data.room === 'public' || data.peerId === myId) return;
 
+      const inviteKey = `${data.room}:${data.peerId}`;
+      if (invitedPeersRef.current.has(inviteKey)) return;
+
       const group = groupsRef.current.get(data.room);
-      // If we are active in this group, fetch the new peer's KeyPackage to invite them
       if (group) {
+        // Fetch the new peer's KeyPackage to invite them
         socket.emit('get_key_package', {
           userId: data.peerId,
           roomId: data.room,
@@ -253,7 +260,23 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
     // When backend returns the requested KeyPackage for a peer
     const handleKeyPackageResponse = (data: KeyPackageResponsePayload) => {
-      if (!data?.keyPackage || !data?.roomId || !data?.userId) return;
+      if (!data?.roomId || !data?.userId) return;
+
+      const inviteKey = `${data.roomId}:${data.userId}`;
+      if (invitedPeersRef.current.has(inviteKey)) return;
+
+      // If the peer's KeyPackage was not yet published when queried, retry briefly
+      if (!data.keyPackage) {
+        setTimeout(() => {
+          if (!invitedPeersRef.current.has(inviteKey) && groupsRef.current.has(data.roomId!)) {
+            socket.emit('get_key_package', {
+              userId: data.userId,
+              roomId: data.roomId,
+            });
+          }
+        }, 300);
+        return;
+      }
 
       const group = groupsRef.current.get(data.roomId);
       const prov = providerRef.current;
@@ -261,6 +284,8 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
       if (group && prov && ident) {
         try {
+          invitedPeersRef.current.add(inviteKey);
+
           const targetKeyBytes = base64ToBytes(data.keyPackage);
           const targetKeyPackage = KeyPackage.from_bytes(targetKeyBytes);
 
@@ -320,6 +345,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
     try {
       const newGroup = Group.create_new(currentProvider, currentIdentity, roomId);
+      groupsRef.current.set(roomId, newGroup);
       setActiveGroups((prev) => {
         const updated = new Map(prev);
         updated.set(roomId, newGroup);
@@ -347,6 +373,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         const ratchetTree = RatchetTree.from_bytes(treeBytes);
         const joinedGroup = Group.join(currentProvider, welcomeBytes, ratchetTree);
 
+        groupsRef.current.set(roomId, joinedGroup);
         setActiveGroups((prev) => {
           const updated = new Map(prev);
           updated.set(roomId, joinedGroup);

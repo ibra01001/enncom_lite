@@ -217,12 +217,6 @@ def handle_publish_key(data):
     if key_package_b64:
         r.set(f"user:{user_id}:keypackage", key_package_b64, ex=TTL_SECONDS)
         print(f"Key package registered for user #{user_id}")
-        
-        # Notify room members that this user's KeyPackage is ready for MLS invitation
-        user_rooms = r.smembers(f"user:{user_id}:rooms") or set()
-        for rm in user_rooms:
-            if rm != 'public':
-                emit('peer_joined', {'peerId': user_id, 'room': rm}, to=rm, include_self=False)
 
 @socketio.on('get_key_package')
 def handle_get_key(data):

@@ -68,8 +68,10 @@ const Chatbox: FC = () => {
       // Ignore messages meant for other rooms
       if (msg.room && msg.room !== currentRoom) return;
 
-      // If this client sent the message, reconcile the pending optimistic message
-      if (msg.clientMsgId !== undefined) {
+      const isOwn = Boolean(myId && msg.senderId === myId);
+
+      // If this client sent the message, reconcile our pending optimistic message
+      if (isOwn) {
         setMessages((prev) => {
           const hasPending = prev.some(
             (m) => m.pending && m.clientMsgId === msg.clientMsgId
@@ -81,18 +83,12 @@ const Chatbox: FC = () => {
                 : m
             );
           }
-          // Message from another client that happened to have clientMsgId
-          let displayText = msg.text;
-          if (msg.ciphertext) {
-            const decrypted = decryptMessage(msg.room || currentRoom, msg.ciphertext);
-            displayText = decrypted || '[Unable to decrypt]';
-          }
-          return [...prev, { ...msg, text: displayText ?? '', id: nextId.current++ }];
+          return [...prev, { ...msg, text: msg.text || '', id: nextId.current++ }];
         });
         return;
       }
 
-      // Decrypt incoming message if it contains ciphertext
+      // Message from ANOTHER client — decrypt if it contains ciphertext
       let displayText = msg.text;
       if (msg.ciphertext) {
         const decrypted = decryptMessage(msg.room || currentRoom, msg.ciphertext);
@@ -134,7 +130,7 @@ const Chatbox: FC = () => {
       socket.off('chat message', handleMessage);
       socket.off('join_error', handleJoinError);
     };
-  }, [socket, currentRoom, decryptMessage]);
+  }, [socket, currentRoom, decryptMessage, myId]);
 
   useEffect(() => {
     if (scrollRef.current) {
