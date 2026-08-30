@@ -37,6 +37,7 @@ export interface MlsContextType {
   encryptMessage: (roomId: string, plaintext: string) => string | null;
   decryptMessage: (roomId: string, ciphertextB64: string) => string | null;
   hasGroup: (roomId: string) => boolean;
+  requestWelcome: (roomId: string) => void;
 }
 
 const MlsContext = createContext<MlsContextType>({
@@ -50,6 +51,7 @@ const MlsContext = createContext<MlsContextType>({
   encryptMessage: () => null,
   decryptMessage: () => null,
   hasGroup: () => false,
+  requestWelcome: () => {},
 });
 
 // Custom hook to consume MLS context across components
@@ -258,6 +260,21 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       }
     };
 
+    // When a peer signals they entered without keys (e.g. page refresh or reconnect)
+    const handlePeerNeedsWelcome = (data: PeerJoinedPayload) => {
+      if (!data?.room || data.room === 'public' || data.peerId === myId) return;
+
+      const group = groupsRef.current.get(data.room);
+      if (group) {
+        // Clear previous invitation cache for this peer so they get invited with their new KeyPackage
+        invitedPeersRef.current.delete(`${data.room}:${data.peerId}`);
+        socket.emit('get_key_package', {
+          userId: data.peerId,
+          roomId: data.room,
+        });
+      }
+    };
+
     // When backend returns the requested KeyPackage for a peer
     const handleKeyPackageResponse = (data: KeyPackageResponsePayload) => {
       if (!data?.roomId || !data?.userId) return;
@@ -317,10 +334,12 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     };
 
     socket.on('peer_joined', handlePeerJoined);
+    socket.on('peer_needs_welcome', handlePeerNeedsWelcome);
     socket.on('key_package_response', handleKeyPackageResponse);
 
     return () => {
       socket.off('peer_joined', handlePeerJoined);
+      socket.off('peer_needs_welcome', handlePeerNeedsWelcome);
       socket.off('key_package_response', handleKeyPackageResponse);
     };
   }, [socket, provider, myId]);
@@ -502,6 +521,12 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     return groupsRef.current.has(roomId);
   }, []);
 
+  // 7. Request a welcome message from other room peers (e.g. after refresh)
+  const requestWelcome = useCallback((roomId: string) => {
+    if (!socket || !roomId || roomId === 'public') return;
+    socket.emit('request_mls_welcome', { roomId });
+  }, [socket]);
+
   const contextValue = useMemo(
     () => ({
       isInitialized,
@@ -514,6 +539,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       encryptMessage,
       decryptMessage,
       hasGroup,
+      requestWelcome,
     }),
     [
       isInitialized,
@@ -526,6 +552,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       encryptMessage,
       decryptMessage,
       hasGroup,
+      requestWelcome,
     ]
   );
 

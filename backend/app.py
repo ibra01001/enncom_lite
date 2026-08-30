@@ -231,6 +231,15 @@ def handle_get_key(data):
         'keyPackage': key_package_b64
     })
 
+@socketio.on('request_mls_welcome')
+def handle_request_welcome(data):
+    if not isinstance(data, dict):
+        return
+    room = data.get('roomId')
+    user_id = get_current_user_id()
+    if room and room != 'public':
+        emit('peer_needs_welcome', {'peerId': user_id, 'room': room}, to=room, include_self=False)
+
 @socketio.on('send_welcome')
 def handle_send_welcome(data):
     if not isinstance(data, dict):

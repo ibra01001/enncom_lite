@@ -26,7 +26,25 @@ const Chatbox: FC = () => {
   const nextId = useRef<number>(1);
   const clientMsgId = useRef<number>(0);
   const { socket, myId } = useSocket();
-  const { hasGroup, encryptMessage, decryptMessage } = useMls();
+  const { hasGroup, encryptMessage, decryptMessage, requestWelcome, isInitialized } = useMls();
+
+  const isPrivateRoom = currentRoom !== 'public';
+  const isGroupActive = hasGroup(currentRoom);
+
+  // When joining or refreshing into a private room without an active group, request welcome from peers
+  useEffect(() => {
+    if (!isPrivateRoom || isGroupActive || !socket || !isInitialized) return;
+
+    requestWelcome(currentRoom);
+
+    const interval = setInterval(() => {
+      if (!hasGroup(currentRoom)) {
+        requestWelcome(currentRoom);
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [isPrivateRoom, isGroupActive, socket, isInitialized, currentRoom, requestWelcome, hasGroup]);
 
   useEffect(() => {
     if (!socket) return;
@@ -137,9 +155,6 @@ const Chatbox: FC = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const isPrivateRoom = currentRoom !== 'public';
-  const isGroupActive = hasGroup(currentRoom);
 
   const handleSend = () => {
     const trimmed = input.trim();
