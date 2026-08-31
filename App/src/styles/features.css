@@ -1,0 +1,324 @@
+/* ==========================================================================
+   ENCCOM Features — High-Contrast Flat Design System (Original Enccom Colors)
+   Flat, Sharp, High-Contrast Stealth Tech — No Murky/Pale Tints
+   ========================================================================== */
+
+/* ---------- Tokens ---------- */
+:root {
+  /* Flat High-Contrast Dark Surfaces */
+  --ob-surface-deep: #0e0e0e;
+  --ob-surface-low: #181818;
+  --ob-surface-container: #272727;
+  --ob-surface-high: #323232;
+  --ob-surface-highest: #3a3a3a;
+  --ob-charcoal: #272727;
+  --ob-background: #272727;
+
+  /* High-Contrast Crisp Typography */
+  --ob-text-primary: #ffffff;
+  --ob-text-secondary: #d1d5db;
+  --ob-text-tertiary: #9ca3af;
+  --ob-text-muted: #71717a;
+  --ob-text-white: #ffffff;
+
+  /* Original Flat Enccom Red Accent */
+  --ob-accent: #ff3535;
+  --ob-accent-container: #ff3535;
+  --ob-accent-soft: #2e1616;
+  --ob-accent-strong: #ff5252;
+  --ob-on-accent: #ffffff;
+
+  /* Solid High-Contrast Borders */
+  --ob-border: #333333;
+  --ob-border-strong: #ff3535;
+  --ob-border-subtle: #262626;
+
+  /* Flat Pure Semantic Colors */
+  --ob-data-blue: #3b82f6;
+  --ob-data-amber: #f59e0b;
+  --ob-data-green: #10b981;
+  --ob-data-rose: #ff3535;
+
+  --ob-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ob-maxw: 1180px;
+}
+
+/* ---------- Base ---------- */
+.ob-root {
+  background-color: var(--ob-background);
+  color: var(--ob-text-primary);
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.ob-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.ob-headline {
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+}
+
+/* ---------- Patterns ---------- */
+.ob-halftone {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1.2px, transparent 1.2px);
+  background-size: 8px 8px;
+}
+
+.ob-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* ---------- Pulse ---------- */
+@keyframes ob-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.92); }
+}
+.ob-pulse {
+  animation: ob-pulse 1.8s ease-in-out infinite;
+}
+
+/* ---------- Layout ---------- */
+.ob-wrap {
+  max-width: var(--ob-maxw);
+  margin: 0 auto;
+  padding: 0 64px;
+}
+@media (max-width: 768px) {
+  .ob-wrap { padding: 0 16px; }
+}
+
+/* ---------- Navigation ---------- */
+.ob-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 72px;
+  background: #272727;
+  border-bottom: 1px solid #333333;
+  transition: all 0.15s var(--ob-ease);
+}
+
+.ob-nav-link {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  color: #d1d5db;
+  transition: all 0.15s var(--ob-ease);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.ob-nav-link:hover {
+  color: #ffffff;
+  background: #1f1f1f;
+}
+
+/* ---------- Buttons (Flat High Contrast) ---------- */
+.ob-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  color: #000000;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  padding: 12px 24px;
+  border: 1px solid #ffffff;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s var(--ob-ease);
+}
+
+.ob-btn-primary:hover {
+  background: #ff3535;
+  color: #ffffff;
+  border-color: #ff3535;
+}
+
+.ob-btn-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ff3535;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  padding: 10px 22px;
+  border: 1px solid #ff3535;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s var(--ob-ease);
+}
+
+.ob-btn-accent:hover {
+  background: #ff5252;
+  border-color: #ff5252;
+}
+
+.ob-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e1e1e;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  padding: 12px 24px;
+  border: 1px solid #444444;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s var(--ob-ease);
+}
+
+.ob-btn-ghost:hover {
+  background: #2a2a2a;
+  border-color: #ffffff;
+}
+
+/* ---------- Cards (Flat Brutalist High-Contrast) ---------- */
+.ob-card {
+  background: #272727;
+  border: 1px solid #333333;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.15s var(--ob-ease);
+}
+
+.ob-card:hover {
+  border-color: #ff3535;
+}
+
+/* ---------- Section Borders ---------- */
+.ob-section {
+  border-bottom: 1px solid #333333;
+  background: #272727;
+}
+
+/* ---------- Status Badge ---------- */
+.ob-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #272727;
+  border: 1px solid #333333;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+/* ---------- Data Labels ---------- */
+.ob-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.ob-data {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+/* ---------- Headline Sizing ---------- */
+.ob-h-xl {
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-size: clamp(40px, 6vw, 80px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+}
+
+.ob-h-lg {
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-size: 40px;
+  line-height: 48px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.ob-h-md {
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+/* ---------- Scrollbar ---------- */
+.ob-root::-webkit-scrollbar { width: 6px; }
+.ob-root::-webkit-scrollbar-track { background: #272727; }
+.ob-root::-webkit-scrollbar-thumb { background: #333333; border-radius: 0; }
+.ob-root::-webkit-scrollbar-thumb:hover { background: #ff3535; }
+
+/* ---------- Table ---------- */
+.ob-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  background: #272727;
+}
+
+.ob-table th {
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #d1d5db;
+  border-bottom: 2px solid #333333;
+  background: #0e0e0e;
+}
+
+.ob-table td {
+  padding: 14px 20px;
+  border-bottom: 1px solid #262626;
+  color: #d1d5db;
+  transition: background 0.15s var(--ob-ease);
+}
+
+.ob-table tr:hover td {
+  background: #222222;
+}
+
+.ob-table td.ob-highlight {
+  color: #ffffff;
+  font-weight: 700;
+  background: #251212;
+  border-left: 2px solid #ff3535;
+}
+
+/* ---------- Material Symbols Helper ---------- */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
