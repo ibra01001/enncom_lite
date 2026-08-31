@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AnimatedArrows from './components/Arrows';
 import Chatbox from './components/Chatbox';
 import About from './components/About';
+import Features from './components/Features';
 
 export default function App() {
   const location = useLocation();
@@ -46,6 +47,7 @@ export default function App() {
       />
       <Route path="/chatbox" element={<Chatbox />} />
       <Route path="/about" element={<About />} />
+      <Route path="/features" element={<Features />} />
     </Routes>
   );
 }

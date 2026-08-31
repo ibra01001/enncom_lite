@@ -18,8 +18,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 r = redis.Redis(host="redis", port=6379, decode_responses=True)
 PUBLIC_CHAT_KEY = "chat:messages:public"
 MAX_HISTORY = 50
-TTL_SECONDS = 86400
-
+TTL_SECONDS = 60
 # Maps client_token → short_id (persists identity across reconnects) 
 token_to_id = {}
 

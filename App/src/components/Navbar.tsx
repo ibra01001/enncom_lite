@@ -11,7 +11,7 @@ const Navbar = () => {
 
       <nav className="flex items-center gap-6 text-sm text-zinc-300">
         <Link to="/about" className="hover:text-[#737373ff] transition-colors">What is Enncom?</Link>
-        <a href="#" className="hover:text-[#737373ff] transition-colors">Features</a>
+        <Link to="/features" className="hover:text-[#737373ff] transition-colors">Features</Link>
         <a href="#" className="hover:text-[#737373ff] transition-colors">Guide</a>
         <Link to="/chatbox" className="text-red-500 font-semibold hover:text-[#737373ff] transition-colors">Public Chat</Link>
       </nav>
