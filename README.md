@@ -30,15 +30,20 @@
 
 ## What is ENCCOM?
 
-ENCCOM is a chat app focused on protecting users so they they can chat safely no data colected no account needed keeping conversations private. No blockchain, no crypto-wallet weirdness, no decentralized network to babysit — just a normal, understandable app that takes encryption seriously where it actually matters.
+ENCCOM is a chat app built with privacy in mind. You don't need an account to use it, and the app doesn't collect unnecessary personal data. The goal is to keep things simple while making private communication more secure.
 
-It has three main things you can do:
+ENCCOM has three main features:
 
-1. **Public Chat** — an open room anyone can join by opening the app. It's not private by design; it's just for casual real-time chatting. Focus here is on stopping spam/abuse, not hiding messages.
-2. **Private Rooms** — group chats where messages are encrypted *before* they leave your device. The server only ever sees scrambled data, never the actual message.
-3. **Video Calls** — real-time calls where video/audio travel peer-to-peer (via WebRTC), so the server isn't touching your video stream at all.
+1. **Public Chat**  : A normal open chat room that anyone can join when they open the app. It's not meant to be private, so the main focus here is keeping the room usable and preventing spam and abuse.
 
-The guiding idea: **keep the plumbing simple, put the real effort into privacy** — encrypting messages, avoiding unnecessary tracking, and not collecting more data than a feature actually needs.
+2. **Private Rooms:**  Private group chats where messages are encrypted on your device before they're sent to the server. The server only receives the encrypted data, not the actual message.
+
+3. **Video Calls**  : Video and audio calls use WebRTC to connect users directly when possible. This means the server doesn't handle the actual video or audio stream.
+
+The main idea behind ENCCOM is simple: **keep the application itself straightforward, and focus the complexity where it matters privacy and security.**
+
+Instead of collecting data we don't need, ENCCOM tries to minimize what the server knows about its users and their conversations.
+
 
 ---
 
