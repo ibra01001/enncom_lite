@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type FC, type KeyboardEvent } from 'react'
 import { useSocket } from '../context/SocketContext';
 import Rooms from './Rooms';
 import { useMls } from '../context/MlsContext';
+
 import type {
   Message,
   HistoryPayload,
@@ -280,8 +281,8 @@ const Chatbox: FC = () => {
             {isPrivateRoom ? (
               <span
                 className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded flex items-center gap-1 ${isGroupActive
-                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/50'
-                    : 'bg-amber-950 text-amber-400 border border-amber-700/50'
+                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/50'
+                  : 'bg-amber-950 text-amber-400 border border-amber-700/50'
                   }`}
               >
                 <span>{isGroupActive ? 'E2EE Active' : 'Awaiting Keys'}</span>
@@ -373,6 +374,7 @@ const Chatbox: FC = () => {
           </button>
         </div>
       </div>
+      {/*  <Members currentRoom={currentRoom} /> */}
     </div>
   );
 };

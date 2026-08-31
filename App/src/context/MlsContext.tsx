@@ -51,7 +51,7 @@ const MlsContext = createContext<MlsContextType>({
   encryptMessage: () => null,
   decryptMessage: () => null,
   hasGroup: () => false,
-  requestWelcome: () => {},
+  requestWelcome: () => { },
 });
 
 // Custom hook to consume MLS context across components
@@ -501,7 +501,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       try {
         const ciphertextBytes = base64ToBytes(ciphertextB64);
         const decryptedBytes = group.process_message(currentProvider, ciphertextBytes);
-        
+
         // Non-application / control messages produce no decrypted text
         if (!decryptedBytes || decryptedBytes.length === 0) {
           return null;

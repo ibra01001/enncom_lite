@@ -13,11 +13,13 @@ export interface Message {
 export interface Room {
   id: string;
   name: string;
+
 }
 
 export interface SocketContextType {
   socket: Socket | null;
   myId: string | null;
+
 }
 
 export interface SessionInfoPayload {

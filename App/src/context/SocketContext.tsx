@@ -5,6 +5,7 @@ import type { SocketContextType, SessionInfoPayload } from '../types/chat';
 const SocketContext = createContext<SocketContextType>({
   socket: null,
   myId: null,
+  
 });
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -46,6 +47,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [myId, setMyId] = useState<string | null>(null);
 
+
   useEffect(() => {
     const clientToken = getClientToken();
 
@@ -56,6 +58,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     // Server is the single source of truth for our identity
     newSocket.on('session_info', (data: SessionInfoPayload) => {
       setMyId(data.myId);
+      
     });
 
     setSocket(newSocket);
