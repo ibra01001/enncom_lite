@@ -188,31 +188,27 @@ socket.on('chat message', (msg) => {
           </div>
         </div>
 
-        {/* Asymmetrical Flow Grid */}
-        <div className="grid grid-cols-12 gap-8 relative">
+        {/* Seamless Integrated Flow Grid (No Cards, Part of the Web) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 border-b border-white/10 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
           {/* Node 1: CLI Quickstart */}
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 z-10 relative lg:mt-8">
-            {/* Watermark 01 */}
-            <div className="absolute -top-7 -left-4 text-7xl text-white/5 font-black select-none pointer-events-none z-0">
-              01
-            </div>
-
-            <div className="border-l-2 border-[#FF3535] pl-6 py-4 relative z-10 bg-[#1c1b1b]/50 rounded-r border-y border-r border-white/5 shadow-xl">
-              <div className="flex items-baseline justify-between mb-4">
-                <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-['Hanken_Grotesk',sans-serif]">
-                  Init Environment
-                </h3>
-                <span className="text-[11px] font-mono text-[#FF3535] tracking-widest uppercase font-bold">
-                  ID :: CLI_CORE
+          <div className="lg:col-span-4 py-8 lg:pr-8 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-['JetBrains_Mono',monospace] text-xs font-bold text-zinc-400 tracking-widest uppercase">
+                  01 // INIT ENVIRONMENT
                 </span>
+
               </div>
 
-              <div className="font-mono text-xs text-zinc-400 mb-2 opacity-70">
+              <h3 className="text-2xl font-bold text-white tracking-tight font-['Hanken_Grotesk',sans-serif] mb-2">
+                CLI Quickstart
+              </h3>
+
+              <div className="font-mono text-xs text-zinc-400 mb-3 opacity-70">
                 &gt;&gt; init_pkg_buffer()
               </div>
 
-              <div className="bg-[#121212]/90 border-y border-white/10 py-3.5 px-3 font-mono relative group rounded-r mr-1">
-                <div className="absolute top-0 left-0 w-1 h-full bg-[#FF3535] scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div>
+              <div className="border-l-2 border-[#FF3535] bg-[#161616]/80 border-y border-r border-white/10 p-3.5 mb-6">
                 <div className="flex flex-col gap-2">
                   <div className="font-mono text-xs sm:text-[13px] leading-relaxed text-zinc-200 break-all whitespace-pre-wrap">
                     <span className="text-[#FF3535] mr-2 font-bold select-none">$</span>
@@ -220,7 +216,7 @@ socket.on('chat message', (msg) => {
                   </div>
                   <button
                     onClick={handleCopyInstall}
-                    className="self-end text-xs font-mono text-zinc-300 hover:text-white bg-[#272727] hover:bg-[#FF3535] px-2.5 py-1 rounded transition-colors border border-white/10 font-bold flex items-center gap-1"
+                    className="self-end text-xs font-mono text-zinc-300 hover:text-white bg-[#222222] px-2.5 py-1 transition-colors border border-white/10 font-bold flex items-center gap-1 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[13px]">
                       {copiedInstall ? 'check' : 'content_copy'}
@@ -230,7 +226,7 @@ socket.on('chat message', (msg) => {
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-3">
+              <div className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-[#FF3535] animate-pulse"></span>
                 <span className="font-mono text-[11px] text-zinc-400 tracking-wider">
                   _CLI_READY : AWAITING COMMAND
@@ -238,124 +234,105 @@ socket.on('chat message', (msg) => {
               </div>
             </div>
 
-            {/* Directional Connector Arrow */}
-            <div className="flex justify-center relative z-0 opacity-50 my-1">
-              <span className="material-symbols-outlined text-[32px] text-zinc-500 rotate-90 lg:rotate-0 lg:absolute lg:-right-8 lg:top-1/2 lg:-translate-y-1/2">
-                arrow_forward
-              </span>
-              <div className="lg:hidden w-full h-px border-t border-dashed border-white/20"></div>
+            <div className="pt-6 border-t border-white/5 font-['JetBrains_Mono',monospace] text-[11px] text-zinc-500 flex justify-between items-center">
+              <span>TARGET ENV</span>
+              <span className="text-zinc-400 font-medium">NODE / BROWSER / WASM</span>
             </div>
           </div>
 
           {/* Node 2: Code Viewer (Hardware Style) */}
-          <div className="col-span-12 lg:col-span-8 relative z-0 lg:mt-2">
-            <div className="relative bg-[#121212] backdrop-blur-md border border-white/10 rounded shadow-2xl overflow-hidden group hover:border-white/20 transition-colors duration-500 flex flex-col min-h-[480px]">
-              {/* Layered Technical Background */}
-              <div
-                className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-25 pointer-events-none"
-                style={{
-                  backgroundImage:
-                    "url('https://lh3.googleusercontent.com/aida/AEtjO1VtZuSISyqMlwwK5ZQDBT7F22HdtYrDKXQ31_-lsDr7LW5TdUYRq0kQk7GPoFDUSQp0fxtqnwEiyBOI7oeQJ_-uAFfLGqZd02y-cFm9Q43l3oJUsWnsTneGGxkKTsZcxw7eyendxFnNQWsjTRc2_WnZXk5JAgadY_EwjtW1fZT8Bl2nh5YVihuIe02bOty5_4uEIY2ZRsf6ysmAXxEf9K-okwGLzRv0YxtnUqMZwryyhmHpZE9Qfl6ZuBo')",
-                }}
-              ></div>
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0e0e0e]/95 pointer-events-none"></div>
-
-              <div className="relative flex flex-col h-full z-10 flex-grow">
-                {/* Header */}
-                <div className="flex flex-wrap justify-between items-start p-6 pb-4 gap-4">
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2 font-['Hanken_Grotesk',sans-serif]">
-                      <span className="material-symbols-outlined text-[#FF3535]">terminal</span>
-                      Kernel Instance
-                    </h3>
-                    <p className="text-[11px] font-mono text-zinc-400 uppercase tracking-widest mt-1 font-bold">
-                      Execution Layer
-                    </p>
-                  </div>
-                  <div className="text-[11px] font-mono text-zinc-400 flex flex-col items-end">
-                    <span className="animate-pulse text-[#FF3535] font-bold">_OPSEC_ACTIVE</span>
-                    <span className="mt-0.5 text-zinc-400">STATE // RUNNING</span>
-                  </div>
+          <div className="lg:col-span-8 py-8 lg:pl-8 flex flex-col justify-between">
+            <div className="flex flex-col h-full flex-grow">
+              {/* Header */}
+              <div className="flex flex-wrap justify-between items-start mb-4 gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2 font-['Hanken_Grotesk',sans-serif]">
+                    <span className="material-symbols-outlined text-[#FF3535]">terminal</span>
+                    Kernel Instance
+                  </h3>
+                  <p className="text-[11px] font-mono text-zinc-400 uppercase tracking-widest mt-1 font-bold">
+                    Execution Layer
+                  </p>
                 </div>
+                <div className="text-[11px] font-mono text-zinc-400 flex flex-col items-end">
+                  <span className="animate-pulse text-[#FF3535] font-bold">_OPSEC_ACTIVE</span>
+                  <span className="mt-0.5 text-zinc-400">STATE // RUNNING</span>
+                </div>
+              </div>
 
-                {/* Tabs */}
-                <div className="flex items-center justify-between border-y border-white/10 bg-[#0e0e0e]/70 px-4 sm:px-6 overflow-x-auto">
-                  <div className="flex overflow-x-auto scrollbar-hide gap-1 py-1">
-                    <button
-                      onClick={() => setActiveSnippetTab('init')}
-                      className={`px-4 sm:px-5 py-2.5 font-mono text-xs transition-colors rounded-t border-b-2 font-bold whitespace-nowrap ${
-                        activeSnippetTab === 'init'
-                          ? 'text-white border-[#FF3535] bg-white/5'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5 border-transparent'
-                      }`}
-                    >
-                      01. WASM Init
-                    </button>
-                    <button
-                      onClick={() => setActiveSnippetTab('keypackage')}
-                      className={`px-4 sm:px-5 py-2.5 font-mono text-xs transition-colors rounded-t border-b-2 font-bold whitespace-nowrap ${
-                        activeSnippetTab === 'keypackage'
-                          ? 'text-white border-[#FF3535] bg-white/5'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5 border-transparent'
-                      }`}
-                    >
-                      02. KeyPackages
-                    </button>
-                    <button
-                      onClick={() => setActiveSnippetTab('group')}
-                      className={`px-4 sm:px-5 py-2.5 font-mono text-xs transition-colors rounded-t border-b-2 font-bold whitespace-nowrap ${
-                        activeSnippetTab === 'group'
-                          ? 'text-white border-[#FF3535] bg-white/5'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5 border-transparent'
-                      }`}
-                    >
-                      03. TreeKEM Commit
-                    </button>
-                    <button
-                      onClick={() => setActiveSnippetTab('decrypt')}
-                      className={`px-4 sm:px-5 py-2.5 font-mono text-xs transition-colors rounded-t border-b-2 font-bold whitespace-nowrap ${
-                        activeSnippetTab === 'decrypt'
-                          ? 'text-white border-[#FF3535] bg-white/5'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/5 border-transparent'
-                      }`}
-                    >
-                      04. Decrypt Relay
-                    </button>
-                  </div>
-
+              {/* Tabs */}
+              <div className="flex items-center justify-between border-y border-white/10 bg-[#141414] px-3 sm:px-4 overflow-x-auto">
+                <div className="flex overflow-x-auto scrollbar-hide gap-1 py-1">
                   <button
-                    onClick={handleCopyCode}
-                    className="shrink-0 my-1 font-mono text-xs text-zinc-300 hover:text-white bg-[#272727] hover:bg-[#FF3535] transition-colors border border-white/10 px-3 py-1.5 rounded flex items-center gap-1.5 font-bold ml-2"
+                    onClick={() => setActiveSnippetTab('init')}
+                    className={`px-3 sm:px-4 py-2 font-mono text-xs border-b-2 font-bold whitespace-nowrap cursor-pointer ${activeSnippetTab === 'init'
+                      ? 'text-white border-[#FF3535] bg-white/5'
+                      : 'text-zinc-400 hover:text-white border-transparent'
+                      }`}
                   >
-                    <span className="material-symbols-outlined text-[14px]">
-                      {copiedCode ? 'check' : 'content_copy'}
-                    </span>
-                    <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                    01. WASM Init
+                  </button>
+                  <button
+                    onClick={() => setActiveSnippetTab('keypackage')}
+                    className={`px-3 sm:px-4 py-2 font-mono text-xs border-b-2 font-bold whitespace-nowrap cursor-pointer ${activeSnippetTab === 'keypackage'
+                      ? 'text-white border-[#FF3535] bg-white/5'
+                      : 'text-zinc-400 hover:text-white border-transparent'
+                      }`}
+                  >
+                    02. KeyPackages
+                  </button>
+                  <button
+                    onClick={() => setActiveSnippetTab('group')}
+                    className={`px-3 sm:px-4 py-2 font-mono text-xs border-b-2 font-bold whitespace-nowrap cursor-pointer ${activeSnippetTab === 'group'
+                      ? 'text-white border-[#FF3535] bg-white/5'
+                      : 'text-zinc-400 hover:text-white border-transparent'
+                      }`}
+                  >
+                    03. TreeKEM Commit
+                  </button>
+                  <button
+                    onClick={() => setActiveSnippetTab('decrypt')}
+                    className={`px-3 sm:px-4 py-2 font-mono text-xs border-b-2 font-bold whitespace-nowrap cursor-pointer ${activeSnippetTab === 'decrypt'
+                      ? 'text-white border-[#FF3535] bg-white/5'
+                      : 'text-zinc-400 hover:text-white border-transparent'
+                      }`}
+                  >
+                    04. Decrypt Relay
                   </button>
                 </div>
 
-                {/* Code Content Area */}
-                <div className="flex-grow bg-[#0e0e0e]/80 p-4 sm:p-6 overflow-y-auto font-mono text-xs sm:text-[13px] leading-relaxed relative border-l-2 border-white/10 m-3 sm:m-6 rounded-r">
-                  <div className="flex items-start">
-                    {/* Line Numbers */}
-                    <div className="flex flex-col text-zinc-600 select-none pr-4 text-right border-r border-white/10 mr-4 font-mono shrink-0">
-                      {snippets[activeSnippetTab].code.split('\n').map((_, idx) => (
-                        <span key={idx}>{idx + 1}</span>
-                      ))}
-                    </div>
+                <button
+                  onClick={handleCopyCode}
+                  className="shrink-0 my-1 font-mono text-xs text-zinc-300 hover:text-white bg-[#222222] border border-white/10 px-3 py-1.5 flex items-center gap-1.5 font-bold ml-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[14px]">
+                    {copiedCode ? 'check' : 'content_copy'}
+                  </span>
+                  <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
 
-                    {/* Syntax Highlighted Code */}
-                    <div className="overflow-x-auto scrollbar-hide flex-grow font-mono">
-                      {renderHighlightedCode(snippets[activeSnippetTab].code)}
-                    </div>
+              {/* Code Content Area */}
+              <div className="flex-grow bg-[#121212]/90 p-4 sm:p-6 overflow-y-auto font-mono text-xs sm:text-[13px] leading-relaxed relative border-l-2 border-white/10 my-4">
+                <div className="flex items-start">
+                  {/* Line Numbers */}
+                  <div className="flex flex-col text-zinc-600 select-none pr-4 text-right border-r border-white/10 mr-4 font-mono shrink-0">
+                    {snippets[activeSnippetTab].code.split('\n').map((_, idx) => (
+                      <span key={idx}>{idx + 1}</span>
+                    ))}
                   </div>
 
-                  {/* Hardware / Code Telemetry */}
-                  <div className="mt-6 pt-4 border-t border-white/5 flex flex-wrap justify-between items-center text-[11px] text-zinc-400 font-mono gap-2">
-                    <span className="text-[#FF3535] font-bold">[ENTROPY: 7.99]</span>
-                    <span className="text-zinc-300">// {snippets[activeSnippetTab].file}</span>
-                    <span>[SIZE: {new Blob([snippets[activeSnippetTab].code]).size}b]</span>
+                  {/* Syntax Highlighted Code */}
+                  <div className="overflow-x-auto scrollbar-hide flex-grow font-mono">
+                    {renderHighlightedCode(snippets[activeSnippetTab].code)}
                   </div>
+                </div>
+
+                {/* Hardware / Code Telemetry */}
+                <div className="mt-6 pt-4 border-t border-white/5 flex flex-wrap justify-between items-center text-[11px] text-zinc-400 font-mono gap-2">
+                  <span className="text-[#FF3535] font-bold">[ENTROPY: 7.99]</span>
+                  <span className="text-zinc-300">// {snippets[activeSnippetTab].file}</span>
+                  <span>[SIZE: {new Blob([snippets[activeSnippetTab].code]).size}b]</span>
                 </div>
               </div>
             </div>

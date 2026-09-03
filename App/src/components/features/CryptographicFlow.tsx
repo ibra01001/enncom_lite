@@ -116,19 +116,13 @@ Terminus: BOB (Verified)`;
               Deep dive into end-to-end encrypted protocol flows.
             </p>
           </div>
-          <div className="font-mono text-xs text-zinc-400 flex items-center gap-2 bg-[#1c1b1b] border border-white/10 px-3 py-1.5 rounded">
-            <span className="w-2 h-2 rounded-full bg-[#10B981]"></span>
-            <span>MLS_128_DHKEMX25519_AES128GCM</span>
-          </div>
+
         </div>
 
         {/* The Flow Grid */}
         <div className="grid grid-cols-12 gap-6 md:gap-8 relative items-start">
           {/* Node 1: Alice (Sender) */}
           <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 z-10 relative mt-4 md:mt-12">
-            <div className="absolute -top-7 -left-3 text-[48px] md:text-[56px] font-black text-white/5 select-none pointer-events-none z-0">
-              01
-            </div>
 
             {/* Identity Card - Asymmetrical 2px border */}
             <div className="border-l-2 border-[#FF3535] pl-6 py-2 relative z-10 bg-[#1c1b1b]/40 rounded-r border-y border-r border-white/5">
@@ -228,9 +222,7 @@ Terminus: BOB (Verified)`;
 
           {/* Node 3: Bob (Recipient) */}
           <div className="col-span-12 lg:col-span-3 flex flex-col gap-4 z-10 relative mt-8 md:mt-44">
-            <div className="absolute -top-7 -left-3 text-[48px] md:text-[56px] font-black text-white/5 select-none pointer-events-none z-0">
-              03
-            </div>
+
 
             <div className="flex justify-center -mt-8 mb-4 relative z-0 opacity-50 hidden lg:flex">
               <span className="material-symbols-outlined text-[32px] text-[#c7c4d7] absolute -left-8 top-1/2 -translate-y-1/2">

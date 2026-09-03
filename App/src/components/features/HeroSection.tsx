@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import AnimatedArrows from '../Arrows';
 import '../../styles/features.css';
 
 interface HeroSectionProps {
@@ -32,7 +31,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
 
       {/* Animated Arrows on Right Side */}
       <div className="absolute top-0 right-0 w-full lg:w-1/2 h-full z-0 pointer-events-none flex items-center justify-center opacity-60 lg:opacity-100">
-        <AnimatedArrows />
+        {/*<AnimatedArrows />*/}
       </div>
 
       {/* Content: Left aligned container */}
