@@ -7,9 +7,7 @@ export const MetricsBento: React.FC = () => {
       <div className="md:col-span-8 border-r-0 md:border-r border-b md:border-b-0 border-[#333333] bg-[#272727] relative overflow-hidden min-h-[420px] flex flex-col justify-center items-center p-8 md:p-12">
         <div className="absolute inset-0 ob-halftone opacity-40"></div>
         <div className="relative z-10 text-center flex flex-col gap-4 items-center">
-          <span className="ob-label text-zinc-400 uppercase tracking-[0.2em] font-bold text-xs bg-[#222222] border border-[#333333] px-3 py-1">
-            Standard Cryptographic Primitive
-          </span>
+
           <div className="ob-h-xl text-white my-2">
             RFC <span className="text-[#FF3535] text-[52px] md:text-[80px]">9420</span>
           </div>

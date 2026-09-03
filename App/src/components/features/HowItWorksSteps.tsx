@@ -41,15 +41,7 @@ export const HowItWorksSteps: React.FC = () => {
               Three-stage zero-trust cryptographic pipeline.
             </p>
           </div>
-          <a
-            href="https://datatracker.ietf.org/doc/rfc9420/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-['JetBrains_Mono',monospace] text-xs sm:text-sm text-[#FF3535] hover:text-white transition-colors inline-flex items-center gap-1.5 font-bold uppercase tracking-wider py-1 px-3 rounded bg-white/5 border border-white/10"
-          >
-            Read RFC 9420 Docs
-            <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-          </a>
+
         </div>
       </div>
 
