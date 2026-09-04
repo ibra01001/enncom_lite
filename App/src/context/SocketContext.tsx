@@ -14,26 +14,14 @@ export const useSocket = (): SocketContextType => {
 };
 
 /**
- * Generate a random 6-char alphanumeric string.
- * Used as a persistent client token stored in sessionStorage.
- */
-function generateToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-/**
  * Get or create a persistent client token from sessionStorage.
+ * Uses crypto.randomUUID() for 128-bit entropy (no collision risk).
  * Survives page refreshes but clears when the tab is closed.
  */
 function getClientToken(): string {
   let token = sessionStorage.getItem('enncom_client_token');
   if (!token) {
-    token = generateToken();
+    token = crypto.randomUUID();
     sessionStorage.setItem('enncom_client_token', token);
   }
   return token;
