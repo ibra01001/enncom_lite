@@ -83,7 +83,9 @@ def create_room(data=None):
     })
     # 2. Add room to creator's personal room set
     pipe.sadd(f"user:{user_id}:rooms", room_name)
-    # 3. Initialize room message history
+    # 3. Initialize room epoch counter
+    pipe.set(f"room:{room_name}:epoch", "0")
+    # 4. Initialize room message history
     room_key = f"chat:messages:{room_name}"
     pipe.lpush(room_key, json.dumps({
         "room": room_name,
@@ -190,8 +192,9 @@ def delete_room(data):
         pipe.srem(f"user:{user_id}:rooms", room)
         pipe.execute()
 
-        # Broadcast deletion to all sockets in the room
+        # Broadcast deletion and MLS destruction to all sockets in the room
         emit('room_deleted', {'room': room}, to=room, include_self=True)
+        emit('mls_group_destroyed', {'room': room}, to=room, include_self=True)
     else:
         # Guest deletes: treats as Leave Room (does not destroy room for others)
         r.srem(f"user:{user_id}:rooms", room)
@@ -355,8 +358,32 @@ def handle_send_commit(data):
     if not isinstance(data, dict):
         return
     room = data.get('roomId')
+    if not room or room == 'public':
+        return
+
+    expected_epoch = data.get('epoch')
+    current_epoch_str = r.get(f"room:{room}:epoch")
+    current_epoch = int(current_epoch_str) if current_epoch_str is not None else 0
+
+    if expected_epoch is not None:
+        try:
+            if int(expected_epoch) != current_epoch:
+                emit('epoch_conflict', {
+                    'roomId': room,
+                    'serverEpoch': current_epoch,
+                    'attemptedEpoch': int(expected_epoch)
+                })
+                print(f"Epoch conflict in {room}: client attempted {expected_epoch}, server at {current_epoch}")
+                return
+        except (ValueError, TypeError):
+            pass
+
+    new_epoch = r.incr(f"room:{room}:epoch")
+    r.expire(f"room:{room}:epoch", TTL_SECONDS)
+    data['epoch'] = new_epoch
     # Broadcast commit to all other room members so their RatchetTree stays synchronized
     emit('mls_commit', data, to=room, include_self=False)
+    print(f"Commit accepted for room {room}: epoch {current_epoch} -> {new_epoch}")
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)

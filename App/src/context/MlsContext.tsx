@@ -38,6 +38,7 @@ export interface MlsContextType {
   decryptMessage: (roomId: string, ciphertextB64: string) => string | null;
   hasGroup: (roomId: string) => boolean;
   requestWelcome: (roomId: string) => void;
+  getGroupEpoch: (roomId: string) => number;
 }
 
 const MlsContext = createContext<MlsContextType>({
@@ -52,6 +53,7 @@ const MlsContext = createContext<MlsContextType>({
   decryptMessage: () => null,
   hasGroup: () => false,
   requestWelcome: () => { },
+  getGroupEpoch: () => 0,
 });
 
 // Custom hook to consume MLS context across components
@@ -81,6 +83,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
   const groupsRef = useRef<Map<string, Group>>(activeGroups);
   const providerRef = useRef<Provider | null>(null);
   const identityRef = useRef<Identity | null>(null);
+  const roomEpochsRef = useRef<Map<string, number>>(new Map());
 
   // Synchronize refs with state updates
   useEffect(() => {
@@ -158,6 +161,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       roomId: string;
       welcome: string;
       tree: string;
+      epoch?: number;
     }
 
     const handleMlsWelcome = (data: WelcomePayload) => {
@@ -176,6 +180,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         const joinedGroup = Group.join(prov, welcomeBytes, ratchetTree);
 
         groupsRef.current.set(data.roomId, joinedGroup);
+        roomEpochsRef.current.set(data.roomId, data.epoch ?? 1);
         setActiveGroups((prev) => {
           const updated = new Map(prev);
           updated.set(data.roomId, joinedGroup);
@@ -207,6 +212,13 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     interface CommitPayload {
       roomId: string;
       commit: string;
+      epoch?: number;
+    }
+
+    interface EpochConflictPayload {
+      roomId: string;
+      serverEpoch: number;
+      attemptedEpoch?: number;
     }
 
     const handleMlsCommit = (data: CommitPayload) => {
@@ -217,6 +229,14 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
         const commitBytes = base64ToBytes(data.commit);
         group.process_message(prov, commitBytes);
+
+        if (typeof data.epoch === 'number') {
+          roomEpochsRef.current.set(data.roomId, data.epoch);
+        } else {
+          const current = roomEpochsRef.current.get(data.roomId) ?? 0;
+          roomEpochsRef.current.set(data.roomId, current + 1);
+        }
+
         setActiveGroups((prev) => new Map(prev));
       } catch (err) {
         // Ignored if commit was from our own add or already processed epoch
@@ -224,10 +244,23 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       }
     };
 
+    const handleEpochConflict = (data: EpochConflictPayload) => {
+      console.warn(
+        `[MLS] Epoch conflict in room ${data.roomId}: server at ${data.serverEpoch}, attempted ${data.attemptedEpoch}. Re-syncing...`
+      );
+      roomEpochsRef.current.set(data.roomId, data.serverEpoch);
+      // Re-request welcome from peers to reconcile RatchetTree
+      if (socket && data.roomId && data.roomId !== 'public') {
+        socket.emit('request_mls_welcome', { roomId: data.roomId });
+      }
+    };
+
     socket.on('mls_commit', handleMlsCommit);
+    socket.on('epoch_conflict', handleEpochConflict);
 
     return () => {
       socket.off('mls_commit', handleMlsCommit);
+      socket.off('epoch_conflict', handleEpochConflict);
     };
   }, [socket, provider]);
 
@@ -332,18 +365,23 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           const treeB64 = bytesToBase64(tree.to_bytes());
           const commitB64 = bytesToBase64(addMessages.commit);
 
+          const currentEpoch = roomEpochsRef.current.get(data.roomId) ?? 0;
+
           socket.emit('send_welcome', {
             targetUserId: data.userId,
             roomId: data.roomId,
             welcome: welcomeB64,
             tree: treeB64,
+            epoch: currentEpoch + 1,
           });
 
           socket.emit('send_commit', {
             roomId: data.roomId,
             commit: commitB64,
+            epoch: currentEpoch,
           });
 
+          roomEpochsRef.current.set(data.roomId, currentEpoch + 1);
           setActiveGroups((prev) => new Map(prev));
         } catch (err) {
           console.error(`Failed to auto-invite peer ${data.userId} to room ${data.roomId}:`, err);
@@ -383,6 +421,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     try {
       const newGroup = Group.create_new(currentProvider, currentIdentity, roomId);
       groupsRef.current.set(roomId, newGroup);
+      roomEpochsRef.current.set(roomId, 0);
       setActiveGroups((prev) => {
         const updated = new Map(prev);
         updated.set(roomId, newGroup);
@@ -458,19 +497,25 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         const commitB64 = bytesToBase64(addMessages.commit);
 
         if (socket) {
+          const currentEpoch = roomEpochsRef.current.get(roomId) ?? 0;
+
           // Send Welcome + RatchetTree to the new member
           socket.emit('send_welcome', {
             targetUserId,
             roomId,
             welcome: welcomeB64,
             tree: treeB64,
+            epoch: currentEpoch + 1,
           });
 
           // Broadcast Commit to existing members so their ratchet tree / epoch stays in sync
           socket.emit('send_commit', {
             roomId,
             commit: commitB64,
+            epoch: currentEpoch,
           });
+
+          roomEpochsRef.current.set(roomId, currentEpoch + 1);
         }
 
         return { welcome: welcomeB64, tree: treeB64 };
@@ -545,6 +590,11 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     socket.emit('request_mls_welcome', { roomId });
   }, [socket]);
 
+  // 8. Get current group epoch for a room
+  const getGroupEpoch = useCallback((roomId: string): number => {
+    return roomEpochsRef.current.get(roomId) ?? 0;
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       isInitialized,
@@ -558,6 +608,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       decryptMessage,
       hasGroup,
       requestWelcome,
+      getGroupEpoch,
     }),
     [
       isInitialized,
@@ -571,6 +622,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       decryptMessage,
       hasGroup,
       requestWelcome,
+      getGroupEpoch,
     ]
   );
 

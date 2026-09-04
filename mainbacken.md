@@ -179,8 +179,11 @@ Alice                              Server                               Bob
 
 #### `send_commit`
 - **Direction**: Client $\rightarrow$ Server
-- **Payload**: `{ "roomId": "room_3f8a12bc", "commit": "<base64_commit_bytes>" }`
-- **Logic**: Relays `mls_commit` to all other room members (`include_self=False`) to advance their RatchetTree epoch in lockstep.
+- **Payload**: `{ "roomId": "room_3f8a12bc", "commit": "<base64_commit_bytes>", "epoch": 0 }`
+- **Logic**:
+  1. Checks current epoch stored in `room:<roomId>:epoch` in Redis (initialized to 0 on room creation).
+  2. If client passed `epoch` and it does **not** match current server epoch, emits `epoch_conflict` (`{ roomId, serverEpoch, attemptedEpoch }`) back to the sender and rejects the commit.
+  3. Otherwise, increments epoch in Redis atomically (`INCR`), sets TTL, attaches `data['epoch'] = new_epoch`, and broadcasts `mls_commit` to all other room members (`include_self=False`).
 
 #### `request_mls_welcome`
 - **Direction**: Client $\rightarrow$ Server
