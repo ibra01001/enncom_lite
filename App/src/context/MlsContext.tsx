@@ -39,6 +39,7 @@ export interface MlsContextType {
   hasGroup: (roomId: string) => boolean;
   requestWelcome: (roomId: string) => void;
   getGroupEpoch: (roomId: string) => number;
+  destroyGroup: (roomId: string) => void;
 }
 
 const MlsContext = createContext<MlsContextType>({
@@ -54,6 +55,7 @@ const MlsContext = createContext<MlsContextType>({
   hasGroup: () => false,
   requestWelcome: () => { },
   getGroupEpoch: () => 0,
+  destroyGroup: () => { },
 });
 
 // Custom hook to consume MLS context across components
@@ -595,6 +597,56 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     return roomEpochsRef.current.get(roomId) ?? 0;
   }, []);
 
+  // 9. Destroy and purge local MLS state for a room
+  const destroyGroup = useCallback((roomId: string) => {
+    if (!roomId) return;
+    groupsRef.current.delete(roomId);
+    roomEpochsRef.current.delete(roomId);
+    setActiveGroups((prev) => {
+      if (!prev.has(roomId)) return prev;
+      const updated = new Map(prev);
+      updated.delete(roomId);
+      return updated;
+    });
+
+    // Clean up peer locks and retry records
+    for (const key of invitedPeersRef.current) {
+      if (key.startsWith(`${roomId}:`)) {
+        invitedPeersRef.current.delete(key);
+      }
+    }
+    for (const key of retryCountsRef.current.keys()) {
+      if (key.startsWith(`${roomId}:`)) {
+        retryCountsRef.current.delete(key);
+      }
+    }
+
+    console.log(`[MLS] Local group and state purged for room ${roomId}`);
+  }, []);
+
+  // Effect E: Listen for room deletion / MLS group destruction to purge local state
+  useEffect(() => {
+    if (!socket) return;
+
+    interface RoomDestroyedPayload {
+      room: string;
+    }
+
+    const handleGroupDestroyed = (data: RoomDestroyedPayload) => {
+      if (data?.room) {
+        destroyGroup(data.room);
+      }
+    };
+
+    socket.on('mls_group_destroyed', handleGroupDestroyed);
+    socket.on('room_deleted', handleGroupDestroyed);
+
+    return () => {
+      socket.off('mls_group_destroyed', handleGroupDestroyed);
+      socket.off('room_deleted', handleGroupDestroyed);
+    };
+  }, [socket, destroyGroup]);
+
   const contextValue = useMemo(
     () => ({
       isInitialized,
@@ -609,6 +661,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       hasGroup,
       requestWelcome,
       getGroupEpoch,
+      destroyGroup,
     }),
     [
       isInitialized,
@@ -623,6 +676,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       hasGroup,
       requestWelcome,
       getGroupEpoch,
+      destroyGroup,
     ]
   );
 

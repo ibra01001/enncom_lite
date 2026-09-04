@@ -201,6 +201,7 @@ def delete_room(data):
         flask_leave_room(room)
         emit('peer_left', {'peerId': user_id, 'room': room}, to=room, include_self=False)
         emit('room_deleted', {'room': room})  # Signal only calling client to remove from sidebar
+        emit('mls_group_destroyed', {'room': room})
 
 @socketio.on('join_room')
 def handle_join_room(data):
