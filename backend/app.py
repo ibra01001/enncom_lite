@@ -1,6 +1,6 @@
 # pyrefly: ignore [missing-import]
 from flask import Flask, request
-from flask_socketio import SocketIO, emit, join_room as flask_join_room
+from flask_socketio import SocketIO, emit, join_room as flask_join_room, leave_room as flask_leave_room
 from flask_cors import CORS
 import os
 import time 
@@ -19,15 +19,20 @@ r = redis.Redis(host="redis", port=6379, decode_responses=True)
 PUBLIC_CHAT_KEY = "chat:messages:public"
 MAX_HISTORY = 50
 TTL_SECONDS = 86400
+MAX_MSG_BYTES = 65536     # 64 KB message payload limit
+MAX_KEY_PACKAGES = 50     # Cap KeyPackage pool depth per user
 
 def get_or_create_id(client_token):
     """Derive a stable short ID from a client token.
     Persisted in Redis so identity survives server restarts."""
-    cached = r.get(f"token:{client_token}:id")
+    if not client_token:
+        return request.sid[:6]
+    sanitized_token = str(client_token)[:64]
+    cached = r.get(f"token:{sanitized_token}:id")
     if cached:
         return cached
-    short_id = client_token[:6] if client_token else request.sid[:6]
-    r.set(f"token:{client_token}:id", short_id, ex=TTL_SECONDS)
+    short_id = sanitized_token[:6]
+    r.set(f"token:{sanitized_token}:id", short_id, ex=TTL_SECONDS)
     return short_id
 
 def get_current_user_id():
@@ -35,42 +40,62 @@ def get_current_user_id():
     client_token = request.args.get('client_token', None)
     return get_or_create_id(client_token)
 
-# Room Data Schema:
-# chat:room:<room_id>      -> Hash { name, owner, created_at }
-# chat:messages:<room_id>  -> List of JSON messages
-# user:<user_id>:rooms     -> Set of joined room IDs
+# ============================================================================
+# Connection Lifecycle
+# ============================================================================
+
+@socketio.on('connect')
+def handle_connect():
+    user_id = get_current_user_id()
+    # Native Socket.IO user room: enables clean cluster-ready targeted emissions
+    flask_join_room(f"user:{user_id}")
+    print(f'connected: {request.sid} (#{user_id})')
+    
+    # Single source of truth: server tells client its assigned ID
+    emit('session_info', {'myId': user_id})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    user_id = get_current_user_id()
+    print(f'disconnected: {request.sid} (#{user_id})')
+
+# ============================================================================
+# Room Management (High Performance & Strict Permissions)
+# ============================================================================
 
 @socketio.on('create_room')
 def create_room(data=None):
     user_id = get_current_user_id()
-    custom_name = data.get('name') if isinstance(data, dict) else None
+    raw_name = data.get('name') if isinstance(data, dict) else None
     
     room_id = uuid.uuid4().hex[:8]
     room_name = f"room_{room_id}"
-    display_name = custom_name.strip() if custom_name and custom_name.strip() else f"Private Room #{room_id[:4]}"
+    display_name = raw_name.strip()[:64] if raw_name and raw_name.strip() else f"Private Room #{room_id[:4]}"
 
-    # Save room metadata in Redis
-    r.hset(f"chat:room:{room_name}", mapping={
+    # Atomic pipeline execution
+    pipe = r.pipeline()
+    # 1. Room metadata with MLS binding
+    pipe.hset(f"chat:room:{room_name}", mapping={
         "name": display_name,
         "owner": user_id,
-        "created_at": time.time()
+        "created_at": time.time(),
+        "mls_enabled": "1"
     })
-
-    # Add room to creator's personal room set
-    r.sadd(f"user:{user_id}:rooms", room_name)
-
-    # Automatically join creator to socket room
-    flask_join_room(room_name)
-
-    # Initialize room message history
+    # 2. Add room to creator's personal room set
+    pipe.sadd(f"user:{user_id}:rooms", room_name)
+    # 3. Initialize room message history
     room_key = f"chat:messages:{room_name}"
-    r.lpush(room_key, json.dumps({
+    pipe.lpush(room_key, json.dumps({
         "room": room_name,
         "senderId": "system",
         "text": f"Room '{display_name}' created.",
         "timestamp": time.time()
     }))
-    r.expire(room_key, TTL_SECONDS)
+    pipe.expire(room_key, TTL_SECONDS)
+    pipe.execute()
+
+    # Automatically join creator to socket room
+    flask_join_room(room_name)
 
     emit('room_created', {
         'room': room_name,
@@ -83,16 +108,45 @@ def create_room(data=None):
 def get_my_rooms():
     user_id = get_current_user_id()
     user_rooms = r.smembers(f"user:{user_id}:rooms") or set()
-    user_rooms.add("public")
+    private_rooms = [rm for rm in user_rooms if rm != 'public']
     
-    rooms_info = []
-    for room_id in user_rooms:
-        if room_id == 'public':
-            rooms_info.append({"id": "public", "name": "Public Chat"})
-        else:
-            room_meta = r.hgetall(f"chat:room:{room_id}")
-            display_name = room_meta.get("name", room_id) if room_meta else room_id
-            rooms_info.append({"id": room_id, "name": display_name})
+    # Always include Public Chat as first item
+    rooms_info = [{
+        "id": "public",
+        "name": "Public Chat",
+        "owner": "system",
+        "mls_enabled": False
+    }]
+    
+    if private_rooms:
+        # High-Performance: Batch all room metadata in 1 single network roundtrip
+        pipe = r.pipeline()
+        for room_id in private_rooms:
+            pipe.hgetall(f"chat:room:{room_id}")
+        metas = pipe.execute()
+
+        stale_rooms = []
+        parsed_rooms = []
+        for room_id, meta in zip(private_rooms, metas):
+            if not meta:
+                # Ghost room found: schedule auto-pruning
+                stale_rooms.append(room_id)
+                continue
+            parsed_rooms.append({
+                "id": room_id,
+                "name": meta.get("name", room_id),
+                "owner": meta.get("owner"),
+                "mls_enabled": meta.get("mls_enabled") == "1",
+                "created_at": float(meta.get("created_at", 0))
+            })
+
+        # Auto-prune deleted/ghost rooms from Redis
+        if stale_rooms:
+            r.srem(f"user:{user_id}:rooms", *stale_rooms)
+
+        # Sort private rooms deterministically by creation time (newest first)
+        parsed_rooms.sort(key=lambda x: x["created_at"], reverse=True)
+        rooms_info.extend(parsed_rooms)
             
     emit('rooms_list', {'rooms': rooms_info})
 
@@ -107,10 +161,12 @@ def update_room(data):
     if not room or room == 'public' or not new_name:
         return
 
-    # Verify user membership/ownership
-    if room in r.smembers(f"user:{user_id}:rooms"):
-        r.hset(f"chat:room:{room}", "name", new_name.strip())
-        emit('room_updated', {'room': room, 'name': new_name.strip()}, to=room, include_self=True)
+    # Safety: Only the room owner can rename
+    room_meta = r.hgetall(f"chat:room:{room}")
+    if room_meta and room_meta.get("owner") == user_id:
+        sanitized_name = new_name.strip()[:64]
+        r.hset(f"chat:room:{room}", "name", sanitized_name)
+        emit('room_updated', {'room': room, 'name': sanitized_name}, to=room, include_self=True)
 
 @socketio.on('delete_room')
 def delete_room(data):
@@ -119,26 +175,29 @@ def delete_room(data):
         return
         
     user_id = get_current_user_id()
-    
-    if room in r.smembers(f"user:{user_id}:rooms"):
-        # Delete message history and metadata
-        r.delete(f"chat:messages:{room}")
-        r.delete(f"chat:room:{room}")
-        
-        # Remove room from user's joined rooms set
-        r.srem(f"user:{user_id}:rooms", room)
-        
+    room_meta = r.hgetall(f"chat:room:{room}")
+    if not room_meta:
+        return
+
+    is_owner = (room_meta.get("owner") == user_id)
+
+    if is_owner:
+        # Owner deletes: purge messages, room metadata, and epoch state
+        pipe = r.pipeline()
+        pipe.delete(f"chat:messages:{room}")
+        pipe.delete(f"chat:room:{room}")
+        pipe.delete(f"room:{room}:epoch")
+        pipe.srem(f"user:{user_id}:rooms", room)
+        pipe.execute()
+
         # Broadcast deletion to all sockets in the room
         emit('room_deleted', {'room': room}, to=room, include_self=True)
-
-@socketio.on('connect')
-def handle_connect():
-    client_token = request.args.get('client_token', None)
-    short_id = get_or_create_id(client_token)
-    print(f'connected: {request.sid} (#{short_id})')
-    
-    # Single source of truth: server tells the client its assigned ID
-    emit('session_info', {'myId': short_id})
+    else:
+        # Guest deletes: treats as Leave Room (does not destroy room for others)
+        r.srem(f"user:{user_id}:rooms", room)
+        flask_leave_room(room)
+        emit('peer_left', {'peerId': user_id, 'room': room}, to=room, include_self=False)
+        emit('room_deleted', {'room': room})  # Signal only calling client to remove from sidebar
 
 @socketio.on('join_room')
 def handle_join_room(data):
@@ -152,13 +211,13 @@ def handle_join_room(data):
             emit('join_error', {'room': room, 'message': 'Room not found or has been deleted.'})
             return
 
-        # Persist membership so the guest keeps access after refresh/reconnect
+        # Persist membership so guest retains access after refresh/reconnect
         r.sadd(f"user:{user_id}:rooms", room)
 
     flask_join_room(room)
     print(f'Client {request.sid} (#{user_id}) joined room "{room}"')
     
-    # Notify existing room members that a new peer joined so they can initiate MLS welcome exchange
+    # Notify existing room members so they can initiate MLS welcome exchange
     if room != 'public':
         emit('peer_joined', {'peerId': user_id, 'room': room}, to=room, include_self=False)
 
@@ -174,15 +233,29 @@ def handle_join_room(data):
         print(f"Error fetching history for room '{room}': {e}")
         emit('initial history', {'room': room, 'history': []})
 
-@socketio.on('disconnect')
-def handle_disconnect():
-    print(f'disconnected: {request.sid}')
+# ============================================================================
+# Messaging (E2EE Safety & Validation)
+# ============================================================================
 
 @socketio.on('chat message')
 def handle_message(msg):
-    client_token = request.args.get('client_token', None)
-    sender_id = get_or_create_id(client_token)
+    if not isinstance(msg, dict):
+        return
+    sender_id = get_current_user_id()
     room = msg.get('room', 'public')
+
+    # Safety: Payload size limit
+    raw_payload = json.dumps(msg)
+    if len(raw_payload.encode('utf-8')) > MAX_MSG_BYTES:
+        emit('message_error', {'error': 'Payload size exceeds limit'})
+        return
+
+    # Safety: Verify E2EE enforcement in private rooms
+    if room != 'public':
+        room_meta = r.hgetall(f"chat:room:{room}")
+        if room_meta.get("mls_enabled") == "1" and not msg.get('ciphertext'):
+            emit('message_error', {'error': 'Encrypted ciphertext required for this room'})
+            return
 
     msg.pop('username', None)           # ignore any client-sent username
     msg['senderId'] = sender_id         # stamp with server identity
@@ -190,13 +263,15 @@ def handle_message(msg):
     log_content = msg.get('text') or '[encrypted payload]'
     print(f'[{room}][#{sender_id}] {log_content}')
 
-    # Save to Redis under room-specific key
+    # Save to Redis in a single atomic pipeline
     room_key = f"chat:messages:{room}"
     try:
         msg_to_store = {k: v for k, v in msg.items() if k != 'clientMsgId'}
-        r.lpush(room_key, json.dumps(msg_to_store))  # prepend new message
-        r.ltrim(room_key, 0, MAX_HISTORY - 1)
-        r.expire(room_key, TTL_SECONDS)
+        pipe = r.pipeline()
+        pipe.lpush(room_key, json.dumps(msg_to_store))  # prepend new message
+        pipe.ltrim(room_key, 0, MAX_HISTORY - 1)
+        pipe.expire(room_key, TTL_SECONDS)
+        pipe.execute()
     except Exception as e:
         print(f"Error saving message to Redis: {e}")
 
@@ -214,9 +289,14 @@ def handle_publish_key_packages(data):
         return
     key_packages = data.get('keyPackages', [])
     if key_packages:
-        r.rpush(f"user:{user_id}:keypackages", *key_packages)
-        r.expire(f"user:{user_id}:keypackages", TTL_SECONDS)
-        print(f"Registered pool of {len(key_packages)} key package(s) for user #{user_id}")
+        packages_to_add = key_packages[:MAX_KEY_PACKAGES]
+        key = f"user:{user_id}:keypackages"
+        pipe = r.pipeline()
+        pipe.rpush(key, *packages_to_add)
+        pipe.ltrim(key, -MAX_KEY_PACKAGES, -1)  # Keep pool capped
+        pipe.expire(key, TTL_SECONDS)
+        pipe.execute()
+        print(f"Registered pool of {len(packages_to_add)} key package(s) for user #{user_id}")
 
 @socketio.on('publish_key_package')
 def handle_publish_key(data):
@@ -225,8 +305,12 @@ def handle_publish_key(data):
         return
     key_package_b64 = data.get('keyPackage')
     if key_package_b64:
-        r.rpush(f"user:{user_id}:keypackages", key_package_b64)
-        r.expire(f"user:{user_id}:keypackages", TTL_SECONDS)
+        key = f"user:{user_id}:keypackages"
+        pipe = r.pipeline()
+        pipe.rpush(key, key_package_b64)
+        pipe.ltrim(key, -MAX_KEY_PACKAGES, -1)
+        pipe.expire(key, TTL_SECONDS)
+        pipe.execute()
         print(f"Key package registered for user #{user_id}")
 
 @socketio.on('get_key_package')
@@ -259,9 +343,12 @@ def handle_request_welcome(data):
 def handle_send_welcome(data):
     if not isinstance(data, dict):
         return
-    room = data.get('roomId')
-    # Broadcast welcome packet so the target user receives it
-    emit('mls_welcome', data, to=room, include_self=False)
+    target_user_id = data.get('targetUserId')
+    if not target_user_id:
+        return
+    # Targeted delivery using native Socket.IO user room
+    emit('mls_welcome', data, to=f"user:{target_user_id}")
+    print(f"Targeted MLS welcome delivered to user #{target_user_id}")
 
 @socketio.on('send_commit')
 def handle_send_commit(data):

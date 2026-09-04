@@ -66,8 +66,10 @@ When Alice adds Bob to a private room, she emits a `send_welcome` event with the
   @socketio.on('send_welcome')
   def handle_send_welcome(data):
       target_user = data.get('targetUserId')
-      # Relay welcome directly to target user (or room)
-      emit('mls_welcome', data, broadcast=True) # or targeted to user's session
+      # Relay welcome directly to target user's active session socket(s)
+      target_sids = active_sessions.get(target_user, set())
+      for sid in target_sids:
+          emit('mls_welcome', data, to=sid)
   ```
 
 ### Job C: Relay Encrypted Messages

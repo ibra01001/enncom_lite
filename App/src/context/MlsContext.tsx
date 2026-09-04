@@ -161,7 +161,8 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     }
 
     const handleMlsWelcome = (data: WelcomePayload) => {
-      if (data.targetUserId !== myId) return;
+      // Defense-in-depth: Server now routes targeted to active sessions, but verify recipient matches
+      if (data.targetUserId && data.targetUserId !== myId) return;
 
       try {
         const prov = providerRef.current;
