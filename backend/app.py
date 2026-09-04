@@ -18,18 +18,16 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 r = redis.Redis(host="redis", port=6379, decode_responses=True)
 PUBLIC_CHAT_KEY = "chat:messages:public"
 MAX_HISTORY = 50
-TTL_SECONDS = 60
-# Maps client_token → short_id (persists identity across reconnects) 
-token_to_id = {}
+TTL_SECONDS = 86400
 
 def get_or_create_id(client_token):
     """Derive a stable short ID from a client token.
-    If the token was seen before, return the same ID."""
-    if client_token and client_token in token_to_id:
-        return token_to_id[client_token]
+    Persisted in Redis so identity survives server restarts."""
+    cached = r.get(f"token:{client_token}:id")
+    if cached:
+        return cached
     short_id = client_token[:6] if client_token else request.sid[:6]
-    if client_token:
-        token_to_id[client_token] = short_id
+    r.set(f"token:{client_token}:id", short_id, ex=TTL_SECONDS)
     return short_id
 
 def get_current_user_id():
