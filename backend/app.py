@@ -207,12 +207,26 @@ def handle_message(msg):
 # MLS E2EE Socket Handlers
 # ============================================================================
 
+@socketio.on('publish_key_packages')
+def handle_publish_key_packages(data):
+    user_id = get_current_user_id()
+    if not isinstance(data, dict):
+        return
+    key_packages = data.get('keyPackages', [])
+    if key_packages:
+        r.rpush(f"user:{user_id}:keypackages", *key_packages)
+        r.expire(f"user:{user_id}:keypackages", TTL_SECONDS)
+        print(f"Registered pool of {len(key_packages)} key package(s) for user #{user_id}")
+
 @socketio.on('publish_key_package')
 def handle_publish_key(data):
     user_id = get_current_user_id()
-    key_package_b64 = data.get('keyPackage') if isinstance(data, dict) else None
+    if not isinstance(data, dict):
+        return
+    key_package_b64 = data.get('keyPackage')
     if key_package_b64:
-        r.set(f"user:{user_id}:keypackage", key_package_b64, ex=TTL_SECONDS)
+        r.rpush(f"user:{user_id}:keypackages", key_package_b64)
+        r.expire(f"user:{user_id}:keypackages", TTL_SECONDS)
         print(f"Key package registered for user #{user_id}")
 
 @socketio.on('get_key_package')
@@ -221,7 +235,11 @@ def handle_get_key(data):
         return
     target_user_id = data.get('userId')
     room_id = data.get('roomId')
-    key_package_b64 = r.get(f"user:{target_user_id}:keypackage")
+    # Pop one KeyPackage from the pool (MLS consume-once semantics)
+    key_package_b64 = r.lpop(f"user:{target_user_id}:keypackages")
+    # Fallback to single keypackage key if legacy exists
+    if not key_package_b64:
+        key_package_b64 = r.get(f"user:{target_user_id}:keypackage")
     emit('key_package_response', {
         'userId': target_user_id,
         'roomId': room_id,

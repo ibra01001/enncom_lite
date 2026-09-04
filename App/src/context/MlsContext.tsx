@@ -127,11 +127,15 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
         setIsInitialized(true);
 
-        // Publish KeyPackage to server once identity is ready
+        // Publish KeyPackage pool (10 packages) to server once identity is ready
         if (socket) {
-          const keyPackage = mlsIdentity.key_package(mlsProvider);
-          const keyPackageB64 = bytesToBase64(keyPackage.to_bytes());
-          socket.emit('publish_key_package', { keyPackage: keyPackageB64 });
+          const KEY_PACKAGE_POOL_SIZE = 10;
+          const keyPackages: string[] = [];
+          for (let i = 0; i < KEY_PACKAGE_POOL_SIZE; i++) {
+            const kp = mlsIdentity.key_package(mlsProvider);
+            keyPackages.push(bytesToBase64(kp.to_bytes()));
+          }
+          socket.emit('publish_key_packages', { keyPackages });
         }
       } catch (err) {
         console.error('Failed to initialize OpenMLS WASM or Identity:', err);
@@ -177,11 +181,11 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           return updated;
         });
 
-        // Replenish our published KeyPackage for future room invites
+        // Replenish our published KeyPackage pool for future room invites
         if (ident && socket) {
           const newKp = ident.key_package(prov);
           const newKpB64 = bytesToBase64(newKp.to_bytes());
-          socket.emit('publish_key_package', { keyPackage: newKpB64 });
+          socket.emit('publish_key_packages', { keyPackages: [newKpB64] });
         }
       } catch (err) {
         console.error(`Failed to join MLS group for room ${data.roomId}:`, err);
@@ -228,6 +232,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
   // Effect D: Listen for 'peer_joined' and automated KeyPackage handshake
   const invitedPeersRef = useRef<Set<string>>(new Set());
+  const retryCountsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!socket || !provider) return;
@@ -268,6 +273,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       if (group) {
         // Clear previous invitation cache for this peer so they get invited with their new KeyPackage
         invitedPeersRef.current.delete(`${data.room}:${data.peerId}`);
+        retryCountsRef.current.delete(`${data.room}:${data.peerId}`);
         socket.emit('get_key_package', {
           userId: data.peerId,
           roomId: data.room,
@@ -282,18 +288,29 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       const inviteKey = `${data.roomId}:${data.userId}`;
       if (invitedPeersRef.current.has(inviteKey)) return;
 
-      // If the peer's KeyPackage was not yet published when queried, retry briefly
+      // If the peer's KeyPackage was not yet published when queried, retry with exponential backoff
       if (!data.keyPackage) {
-        setTimeout(() => {
-          if (!invitedPeersRef.current.has(inviteKey) && groupsRef.current.has(data.roomId!)) {
-            socket.emit('get_key_package', {
-              userId: data.userId,
-              roomId: data.roomId,
-            });
-          }
-        }, 300);
+        const retries = retryCountsRef.current.get(inviteKey) || 0;
+        const MAX_RETRIES = 3;
+        if (retries < MAX_RETRIES) {
+          retryCountsRef.current.set(inviteKey, retries + 1);
+          const delay = Math.pow(2, retries) * 500; // 500ms, 1000ms, 2000ms
+          setTimeout(() => {
+            if (!invitedPeersRef.current.has(inviteKey) && groupsRef.current.has(data.roomId!)) {
+              socket.emit('get_key_package', {
+                userId: data.userId,
+                roomId: data.roomId,
+              });
+            }
+          }, delay);
+        } else {
+          console.warn(`Max retries reached fetching KeyPackage for peer ${data.userId} in room ${data.roomId}`);
+        }
         return;
       }
+
+      // Success: clean up retry counter
+      retryCountsRef.current.delete(inviteKey);
 
       const group = groupsRef.current.get(data.roomId);
       const prov = providerRef.current;
