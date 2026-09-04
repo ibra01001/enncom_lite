@@ -3,8 +3,10 @@
 │   ├── architecture.txt
 │   ├── dist
 │   │   ├── assets
-│   │   │   ├── index-CzBjeYrl.css
-│   │   │   └── index-DiSRVVDD.js
+│   │   │   ├── image_from_https_railgun.org_assets_tree_audit.dez3ylxl-Be8Rg4i3.png
+│   │   │   ├── index-B0ydY9VL.js
+│   │   │   ├── index-Dhn1ynmo.css
+│   │   │   └── openmls_wasm_bg-C33SJVuE.wasm
 │   │   ├── favicon.svg
 │   │   ├── icons.svg
 │   │   └── index.html
@@ -21,14 +23,21 @@
 │   │   ├── App.css
 │   │   ├── App.tsx
 │   │   ├── assets
-│   │   │   ├── hero.png
-│   │   │   ├── react.svg
-│   │   │   └── vite.svg
+│   │   │   └── image_from_https_railgun.org_assets_tree_audit.dez3ylxl.png
 │   │   ├── components
 │   │   │   ├── About.tsx
 │   │   │   ├── Arrows.tsx
 │   │   │   ├── Chatbox.tsx
+│   │   │   ├── features
+│   │   │   │   ├── CryptographicFlow.tsx
+│   │   │   │   ├── DevMicrosection.tsx
+│   │   │   │   ├── HeroSection.tsx
+│   │   │   │   ├── HowItWorksSteps.tsx
+│   │   │   │   ├── MetricsBento.tsx
+│   │   │   │   └── SecurityComparison.tsx
+│   │   │   ├── Features.tsx
 │   │   │   ├── Logo.tsx
+│   │   │   ├── Members.tsx
 │   │   │   ├── Navbar.tsx
 │   │   │   └── Rooms.tsx
 │   │   ├── context
@@ -44,6 +53,8 @@
 │   │   │   ├── openmls_wasm.js
 │   │   │   ├── package.json
 │   │   │   └── README.md
+│   │   ├── styles
+│   │   │   └── features.css
 │   │   ├── types
 │   │   │   └── chat.ts
 │   │   ├── utils
@@ -87,7 +98,8 @@
 │   └── static
 │       └── index.html
 ├── Privet_Rooms_crud.md
-├── README.mdy
+├── README.md
+├── redesign.md
 └── SomeTypesOfE2EE.md
 
-18 directories, 73 files
+20 directories, 83 files
