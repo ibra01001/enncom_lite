@@ -102,8 +102,8 @@ All persistent state is stored in Redis with an explicit TTL (Time-To-Live) of 2
 - **Direction**: Client $\rightarrow$ Server
 - **Payload**: `{ "room": "room_3f8a12bc" }`
 - **Security & Role-Based Logic**:
-  - **If Caller is Owner**: Destroys room metadata, messages list, and epoch in Redis. Broadcasts `room_deleted` to the entire room.
-  - **If Caller is Guest (Leave Room)**: Removes room from caller's `user:<id>:rooms`, calls `leave_room()`, emits `peer_left` to remaining peers, and emits `room_deleted` only to the caller to clean their sidebar.
+  - **If Caller is Owner**: Destroys room metadata, messages list, and epoch in Redis. Broadcasts `room_deleted` and `mls_group_destroyed` to the entire room so all participants purge their local OpenMLS state.
+  - **If Caller is Guest (Leave Room)**: Removes room from caller's `user:<id>:rooms`, calls `leave_room()`, emits `peer_left` to remaining peers, and emits `room_deleted` and `mls_group_destroyed` to the caller to clean their sidebar and local cryptographic group state.
 
 #### `join_room`
 - **Direction**: Client $\rightarrow$ Server
