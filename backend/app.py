@@ -58,6 +58,10 @@ def handle_connect():
 def handle_disconnect():
     user_id = get_current_user_id()
     print(f'disconnected: {request.sid} (#{user_id})')
+    user_rooms = r.smembers(f"user:{user_id}:rooms") or set()
+    for rm in user_rooms:
+        r.srem(f"room:{rm}:active_users", user_id)
+        emit('peer_left', {'peerId': user_id, 'room': rm}, to=rm, include_self=False)
 
 # ============================================================================
 # Room Management (High Performance & Strict Permissions)
@@ -184,11 +188,12 @@ def delete_room(data):
     is_owner = (room_meta.get("owner") == user_id)
 
     if is_owner:
-        # Owner deletes: purge messages, room metadata, and epoch state
+        # Owner deletes: purge messages, room metadata, active users, and epoch state
         pipe = r.pipeline()
         pipe.delete(f"chat:messages:{room}")
         pipe.delete(f"chat:room:{room}")
         pipe.delete(f"room:{room}:epoch")
+        pipe.delete(f"room:{room}:active_users")
         pipe.srem(f"user:{user_id}:rooms", room)
         pipe.execute()
 
@@ -198,6 +203,7 @@ def delete_room(data):
     else:
         # Guest deletes: treats as Leave Room (does not destroy room for others)
         r.srem(f"user:{user_id}:rooms", room)
+        r.srem(f"room:{room}:active_users", user_id)
         flask_leave_room(room)
         emit('peer_left', {'peerId': user_id, 'room': room}, to=room, include_self=False)
         emit('room_deleted', {'room': room})  # Signal only calling client to remove from sidebar
@@ -208,6 +214,7 @@ def handle_join_room(data):
     room = data.get('room', 'public') if isinstance(data, dict) else 'public'
     user_id = get_current_user_id()
 
+    room_meta = {}
     # Validate private room exists in Redis before allowing join
     if room != 'public':
         room_meta = r.hgetall(f"chat:room:{room}")
@@ -217,10 +224,28 @@ def handle_join_room(data):
 
         # Persist membership so guest retains access after refresh/reconnect
         r.sadd(f"user:{user_id}:rooms", room)
+        r.sadd(f"room:{room}:active_users", user_id)
+        r.expire(f"room:{room}:active_users", TTL_SECONDS)
 
     flask_join_room(room)
     print(f'Client {request.sid} (#{user_id}) joined room "{room}"')
     
+    # Track active peers and metadata
+    active_peers = list(r.smembers(f"room:{room}:active_users") or set()) if room != 'public' else []
+    is_owner = (room_meta.get("owner") == user_id) if room != 'public' else False
+    current_epoch_str = r.get(f"room:{room}:epoch") if room != 'public' else "0"
+    current_epoch = int(current_epoch_str) if current_epoch_str is not None else 0
+
+    emit('room_joined', {
+        'room': room,
+        'name': room_meta.get('name', room) if room != 'public' else 'Public Chat',
+        'owner': room_meta.get('owner', 'system') if room != 'public' else 'system',
+        'isOwner': is_owner,
+        'activePeers': active_peers,
+        'mls_enabled': room_meta.get('mls_enabled') == '1' if room != 'public' else False,
+        'epoch': current_epoch
+    })
+
     # Notify existing room members so they can initiate MLS welcome exchange
     if room != 'public':
         emit('peer_joined', {'peerId': user_id, 'room': room}, to=room, include_self=False)
@@ -296,11 +321,19 @@ def handle_publish_key_packages(data):
         packages_to_add = key_packages[:MAX_KEY_PACKAGES]
         key = f"user:{user_id}:keypackages"
         pipe = r.pipeline()
+        pipe.delete(key)  # Crucial: Purge stale keys from previous sessions on refresh!
         pipe.rpush(key, *packages_to_add)
         pipe.ltrim(key, -MAX_KEY_PACKAGES, -1)  # Keep pool capped
         pipe.expire(key, TTL_SECONDS)
         pipe.execute()
-        print(f"Registered pool of {len(packages_to_add)} key package(s) for user #{user_id}")
+        print(f"Registered fresh pool of {len(packages_to_add)} key package(s) for user #{user_id}")
+        emit('key_package_count', {'count': len(packages_to_add)})
+
+@socketio.on('get_key_package_count')
+def handle_get_key_package_count():
+    user_id = get_current_user_id()
+    count = r.llen(f"user:{user_id}:keypackages") or 0
+    emit('key_package_count', {'count': count})
 
 @socketio.on('publish_key_package')
 def handle_publish_key(data):

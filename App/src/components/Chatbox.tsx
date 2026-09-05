@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, type FC, type KeyboardEvent } from 'react'
 import { useSocket } from '../context/SocketContext';
 import Rooms from './Rooms';
 import { useMls } from '../context/MlsContext';
+import MlsDebugger from './MlsDebugger';
+import { getCachedMessages } from '../utils/indexedDb';
 
 import type {
   Message,
@@ -15,6 +17,13 @@ const COLORS = {
   accent: '#FF3535',
 };
 
+interface RoomMeta {
+  owner?: string;
+  isOwner?: boolean;
+  activePeers?: string[];
+  epoch?: number;
+}
+
 const Chatbox: FC = () => {
   const [currentRoom, setCurrentRoom] = useState<string>(() => {
     const params = new URLSearchParams(window.location.search);
@@ -23,14 +32,47 @@ const Chatbox: FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>('');
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [showDebugger, setShowDebugger] = useState<boolean>(true);
+  const [roomMeta, setRoomMeta] = useState<RoomMeta>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef<number>(1);
   const clientMsgId = useRef<number>(0);
   const { socket, myId } = useSocket();
-  const { hasGroup, encryptMessage, decryptMessage, requestWelcome, isInitialized } = useMls();
+  const {
+    hasGroup,
+    encryptMessage,
+    decryptMessage,
+    requestWelcome,
+    recreateGroupAsOwner,
+    isInitialized,
+  } = useMls();
 
   const isPrivateRoom = currentRoom !== 'public';
   const isGroupActive = hasGroup(currentRoom);
+
+  // Pre-load locally cached plaintext messages from IndexedDB on room enter or refresh
+  useEffect(() => {
+    let cancelled = false;
+    getCachedMessages(currentRoom).then((cached) => {
+      if (!cancelled && cached && cached.length > 0) {
+        setMessages((prev) => {
+          if (prev.length === 0) {
+            return cached.map((c) => ({
+              id: nextId.current++,
+              senderId: c.senderId,
+              text: c.text,
+              ciphertext: c.ciphertext,
+              room: c.roomId,
+            }));
+          }
+          return prev;
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRoom]);
 
   // When joining or refreshing into a private room without an active group, request welcome from peers
   useEffect(() => {
@@ -139,17 +181,74 @@ const Chatbox: FC = () => {
       handleHistory(data);
     };
 
+    interface RoomJoinedPayload {
+      room: string;
+      name: string;
+      owner: string;
+      isOwner: boolean;
+      activePeers: string[];
+      mls_enabled: boolean;
+      epoch: number;
+    }
+
+    const handleRoomJoined = (data: RoomJoinedPayload) => {
+      if (data?.room === currentRoom) {
+        setRoomMeta({
+          owner: data.owner,
+          isOwner: data.isOwner,
+          activePeers: data.activePeers,
+          epoch: data.epoch,
+        });
+
+        // Solution 2 Owner Auto-Recovery on Refresh:
+        // If owner enters an MLS room without active group, and is alone (or no peer answered):
+        if (data.mls_enabled && !hasGroup(data.room) && data.isOwner) {
+          if (!data.activePeers || data.activePeers.length <= 1) {
+            console.log('[MLS Auto-Recovery] Owner alone in room after refresh. Re-initializing group...');
+            recreateGroupAsOwner(data.room);
+          }
+        }
+      }
+    };
+
+    const handlePeerJoinedRoom = (data: { peerId: string; room: string }) => {
+      if (data?.room === currentRoom && data?.peerId) {
+        setRoomMeta((prev) => {
+          const peers = prev.activePeers || [];
+          if (!peers.includes(data.peerId)) {
+            return { ...prev, activePeers: [...peers, data.peerId] };
+          }
+          return prev;
+        });
+      }
+    };
+
+    const handlePeerLeftRoom = (data: { peerId: string; room: string }) => {
+      if (data?.room === currentRoom && data?.peerId) {
+        setRoomMeta((prev) => ({
+          ...prev,
+          activePeers: (prev.activePeers || []).filter((p) => p !== data.peerId),
+        }));
+      }
+    };
+
     socket.on('initial history', handleInitialHistory);
     socket.on('chat message', handleMessage);
     socket.on('join_error', handleJoinError);
+    socket.on('room_joined', handleRoomJoined);
+    socket.on('peer_joined', handlePeerJoinedRoom);
+    socket.on('peer_left', handlePeerLeftRoom);
 
     return () => {
       socket.off('connect', joinCurrentRoom);
       socket.off('initial history', handleInitialHistory);
       socket.off('chat message', handleMessage);
       socket.off('join_error', handleJoinError);
+      socket.off('room_joined', handleRoomJoined);
+      socket.off('peer_joined', handlePeerJoinedRoom);
+      socket.off('peer_left', handlePeerLeftRoom);
     };
-  }, [socket, currentRoom, decryptMessage, myId]);
+  }, [socket, currentRoom, decryptMessage, myId, hasGroup, recreateGroupAsOwner]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -293,9 +392,28 @@ const Chatbox: FC = () => {
               </span>
             )}
           </div>
-          <span style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs font-mono font-semibold">
-            You are #{myId ?? '...'}
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowDebugger((v) => !v)}
+              className={`text-xs px-2.5 py-1 rounded border flex items-center gap-1.5 cursor-pointer transition-all ${
+                showDebugger
+                  ? 'bg-zinc-800 text-white border-zinc-600 shadow-sm'
+                  : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
+              }`}
+              title="Toggle MLS Identity & Group Debug Inspector"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isGroupActive ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'
+                }`}
+              />
+              <span className="font-semibold font-mono">MLS Inspector</span>
+            </button>
+            <span style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs font-mono font-semibold">
+              You are #{myId ?? '...'}
+            </span>
+          </div>
         </div>
 
         {/* Messages Container */}
@@ -374,7 +492,16 @@ const Chatbox: FC = () => {
           </button>
         </div>
       </div>
-      {/*  <Members currentRoom={currentRoom} /> */}
+
+      {/* MLS Debugger Inspector Side Panel */}
+      {showDebugger && (
+        <MlsDebugger
+          currentRoom={currentRoom}
+          isOwner={roomMeta.isOwner}
+          activePeers={roomMeta.activePeers}
+          onClose={() => setShowDebugger(false)}
+        />
+      )}
     </div>
   );
 };

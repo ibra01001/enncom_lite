@@ -17,10 +17,23 @@ import init, {
 } from '../pkg/openmls_wasm';
 import { useSocket } from './SocketContext';
 import { bytesToBase64, base64ToBytes } from '../utils/mlsUtils';
+import {
+  saveIdentity,
+  saveRoomState,
+  deleteRoomState,
+  saveCachedMessage,
+} from '../utils/indexedDb';
 
 // ============================================================================
 // PART 1: Context & Hook Definition
 // ============================================================================
+
+export interface MlsLogEntry {
+  id: string;
+  time: string;
+  type: 'info' | 'success' | 'warn' | 'error';
+  msg: string;
+}
 
 export interface MlsContextType {
   isInitialized: boolean;
@@ -28,6 +41,7 @@ export interface MlsContextType {
   identity: Identity | null;
   activeGroups: Map<string, Group>;
   createGroup: (roomId: string) => Group | null;
+  recreateGroupAsOwner: (roomId: string) => Group | null;
   joinGroupFromWelcome: (roomId: string, welcomeB64: string, treeB64: string) => Group | null;
   inviteUserToGroup: (
     roomId: string,
@@ -40,6 +54,10 @@ export interface MlsContextType {
   requestWelcome: (roomId: string) => void;
   getGroupEpoch: (roomId: string) => number;
   destroyGroup: (roomId: string) => void;
+  republishKeyPackages: () => void;
+  debugLogs: MlsLogEntry[];
+  addDebugLog: (msg: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
+  keyPackagesCount: number;
 }
 
 const MlsContext = createContext<MlsContextType>({
@@ -48,6 +66,7 @@ const MlsContext = createContext<MlsContextType>({
   identity: null,
   activeGroups: new Map(),
   createGroup: () => null,
+  recreateGroupAsOwner: () => null,
   joinGroupFromWelcome: () => null,
   inviteUserToGroup: () => null,
   encryptMessage: () => null,
@@ -56,6 +75,10 @@ const MlsContext = createContext<MlsContextType>({
   requestWelcome: () => { },
   getGroupEpoch: () => 0,
   destroyGroup: () => { },
+  republishKeyPackages: () => { },
+  debugLogs: [],
+  addDebugLog: () => { },
+  keyPackagesCount: 0,
 });
 
 // Custom hook to consume MLS context across components
@@ -80,12 +103,25 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
   const [provider, setProvider] = useState<Provider | null>(null);
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [activeGroups, setActiveGroups] = useState<Map<string, Group>>(new Map());
+  const [debugLogs, setDebugLogs] = useState<MlsLogEntry[]>([]);
+  const [keyPackagesCount, setKeyPackagesCount] = useState<number>(0);
 
   // Mutable refs to prevent stale closures in async callbacks/socket handlers
   const groupsRef = useRef<Map<string, Group>>(activeGroups);
   const providerRef = useRef<Provider | null>(null);
   const identityRef = useRef<Identity | null>(null);
   const roomEpochsRef = useRef<Map<string, number>>(new Map());
+
+  const addDebugLog = useCallback((msg: string, type: 'info' | 'success' | 'warn' | 'error' = 'info') => {
+    const time = new Date().toLocaleTimeString();
+    const entry: MlsLogEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      time,
+      type,
+      msg,
+    };
+    setDebugLogs((prev) => [entry, ...prev].slice(0, 80));
+  }, []);
 
   // Synchronize refs with state updates
   useEffect(() => {
@@ -112,6 +148,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       if (!myId) return;
 
       try {
+        addDebugLog('Initializing OpenMLS WASM engine...', 'info');
         await init();
         if (isCancelled) return;
 
@@ -131,6 +168,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         }
 
         setIsInitialized(true);
+        addDebugLog(`WASM Engine ready. Identity #${myId} established.`, 'success');
 
         // Publish KeyPackage pool (10 packages) to server once identity is ready
         if (socket) {
@@ -141,9 +179,18 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
             keyPackages.push(bytesToBase64(kp.to_bytes()));
           }
           socket.emit('publish_key_packages', { keyPackages });
+          setKeyPackagesCount(KEY_PACKAGE_POOL_SIZE);
+          addDebugLog(`Published ${KEY_PACKAGE_POOL_SIZE} fresh KeyPackages to server`, 'info');
+
+          // Persist identity to IndexedDB
+          saveIdentity({
+            myId,
+            publishedKeyPackagesCount: KEY_PACKAGE_POOL_SIZE,
+          });
         }
       } catch (err) {
         console.error('Failed to initialize OpenMLS WASM or Identity:', err);
+        addDebugLog(`Init error: ${err}`, 'error');
       }
     }
 
@@ -152,7 +199,21 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     return () => {
       isCancelled = true;
     };
-  }, [myId, socket]);
+  }, [myId, socket, addDebugLog]);
+
+  // Effect A.2: Track key package count from server
+  useEffect(() => {
+    if (!socket) return;
+    const handleCount = (data: { count: number }) => {
+      if (typeof data?.count === 'number') {
+        setKeyPackagesCount(data.count);
+      }
+    };
+    socket.on('key_package_count', handleCount);
+    return () => {
+      socket.off('key_package_count', handleCount);
+    };
+  }, [socket]);
 
   // Effect B: Listen for incoming 'mls_welcome' socket events to auto-join groups
   useEffect(() => {
@@ -164,6 +225,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       welcome: string;
       tree: string;
       epoch?: number;
+      owner?: string;
     }
 
     const handleMlsWelcome = (data: WelcomePayload) => {
@@ -175,6 +237,8 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         const ident = identityRef.current;
         if (!prov) return;
 
+        addDebugLog(`Received MLS welcome for room ${data.roomId} (target: #${data.targetUserId})`, 'info');
+
         const welcomeBytes = base64ToBytes(data.welcome);
         const treeBytes = base64ToBytes(data.tree);
         const ratchetTree = RatchetTree.from_bytes(treeBytes);
@@ -182,12 +246,28 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         const joinedGroup = Group.join(prov, welcomeBytes, ratchetTree);
 
         groupsRef.current.set(data.roomId, joinedGroup);
-        roomEpochsRef.current.set(data.roomId, data.epoch ?? 1);
+        const newEpoch = data.epoch ?? 1;
+        roomEpochsRef.current.set(data.roomId, newEpoch);
         setActiveGroups((prev) => {
           const updated = new Map(prev);
           updated.set(data.roomId, joinedGroup);
           return updated;
         });
+
+        // Save joined room state to IndexedDB for client-side persistence
+        saveRoomState({
+          roomId: data.roomId,
+          name: data.roomId,
+          owner: data.owner || '',
+          isOwner: false,
+          epoch: newEpoch,
+          hasGroup: true,
+          ratchetTree: data.tree,
+          lastWelcome: data.welcome,
+          updatedAt: Date.now(),
+        });
+
+        addDebugLog(`Joined MLS group for ${data.roomId} (Epoch #${newEpoch})`, 'success');
 
         // Replenish our published KeyPackage pool for future room invites
         if (ident && socket) {
@@ -197,6 +277,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         }
       } catch (err) {
         console.error(`Failed to join MLS group for room ${data.roomId}:`, err);
+        addDebugLog(`Failed to join group from welcome: ${err}`, 'error');
       }
     };
 
@@ -205,7 +286,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     return () => {
       socket.off('mls_welcome', handleMlsWelcome);
     };
-  }, [socket, myId, provider]);
+  }, [socket, myId, provider, addDebugLog]);
 
   // Effect C: Listen for incoming 'mls_commit' socket events to update group epoch
   useEffect(() => {
@@ -429,12 +510,68 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         updated.set(roomId, newGroup);
         return updated;
       });
+
+      // Export RatchetTree and save initial room state to IndexedDB
+      const tree = newGroup.export_ratchet_tree();
+      saveRoomState({
+        roomId,
+        name: roomId,
+        owner: myId || '',
+        isOwner: true,
+        epoch: 0,
+        hasGroup: true,
+        ratchetTree: bytesToBase64(tree.to_bytes()),
+        updatedAt: Date.now(),
+      });
+
+      addDebugLog(`Created MLS group for room ${roomId} (Epoch #0)`, 'success');
       return newGroup;
     } catch (err) {
       console.error(`Failed to create MLS group for room ${roomId}:`, err);
+      addDebugLog(`Failed to create MLS group: ${err}`, 'error');
       return null;
     }
-  }, []);
+  }, [myId, addDebugLog]);
+
+  // 1.b Recreate group as room owner (used after page refresh / auto-recovery)
+  const recreateGroupAsOwner = useCallback((roomId: string): Group | null => {
+    const currentProvider = providerRef.current;
+    const currentIdentity = identityRef.current;
+
+    if (!currentProvider || !currentIdentity || !roomId) {
+      return null;
+    }
+
+    try {
+      const newGroup = Group.create_new(currentProvider, currentIdentity, roomId);
+      groupsRef.current.set(roomId, newGroup);
+      roomEpochsRef.current.set(roomId, 0);
+      setActiveGroups((prev) => {
+        const updated = new Map(prev);
+        updated.set(roomId, newGroup);
+        return updated;
+      });
+
+      const tree = newGroup.export_ratchet_tree();
+      saveRoomState({
+        roomId,
+        name: roomId,
+        owner: myId || '',
+        isOwner: true,
+        epoch: 0,
+        hasGroup: true,
+        ratchetTree: bytesToBase64(tree.to_bytes()),
+        updatedAt: Date.now(),
+      });
+
+      addDebugLog(`[OWNER RECOVERY] MLS group re-initialized for ${roomId}`, 'success');
+      return newGroup;
+    } catch (err) {
+      console.error(`Failed to recover MLS group as owner for ${roomId}:`, err);
+      addDebugLog(`Failed to recover group: ${err}`, 'error');
+      return null;
+    }
+  }, [myId, addDebugLog]);
 
   // 2. Join an existing group using received Welcome + RatchetTree packages
   const joinGroupFromWelcome = useCallback(
@@ -457,13 +594,29 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           updated.set(roomId, joinedGroup);
           return updated;
         });
+
+        // Save to IndexedDB
+        saveRoomState({
+          roomId,
+          name: roomId,
+          owner: '',
+          isOwner: false,
+          epoch: roomEpochsRef.current.get(roomId) ?? 1,
+          hasGroup: true,
+          ratchetTree: treeB64,
+          lastWelcome: welcomeB64,
+          updatedAt: Date.now(),
+        });
+
+        addDebugLog(`Joined group ${roomId} from Welcome packet`, 'success');
         return joinedGroup;
       } catch (err) {
         console.error(`Failed to join group from welcome for room ${roomId}:`, err);
+        addDebugLog(`Join from welcome error: ${err}`, 'error');
         return null;
       }
     },
-    []
+    [addDebugLog]
   );
 
   // 3. Add a new member to an existing group and emit welcome packet
@@ -518,15 +671,30 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           });
 
           roomEpochsRef.current.set(roomId, currentEpoch + 1);
+
+          // Update IndexedDB with new ratchet tree and epoch
+          saveRoomState({
+            roomId,
+            name: roomId,
+            owner: myId || '',
+            isOwner: true,
+            epoch: currentEpoch + 1,
+            hasGroup: true,
+            ratchetTree: treeB64,
+            updatedAt: Date.now(),
+          });
+
+          addDebugLog(`Invited #${targetUserId} to ${roomId} (Advanced to Epoch #${currentEpoch + 1})`, 'info');
         }
 
         return { welcome: welcomeB64, tree: treeB64 };
       } catch (err) {
         console.error(`Failed to invite user ${targetUserId} to room ${roomId}:`, err);
+        addDebugLog(`Invite error for #${targetUserId}: ${err}`, 'error');
         return null;
       }
     },
-    [socket]
+    [socket, myId, addDebugLog]
   );
 
   // 4. Encrypt plaintext string into Base64 ciphertext
@@ -546,12 +714,15 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         currentIdentity,
         plaintextBytes
       );
-      return bytesToBase64(ciphertextBytes);
+      const b64 = bytesToBase64(ciphertextBytes);
+      addDebugLog(`Encrypted message for ${roomId} (${plaintext.length} chars)`, 'info');
+      return b64;
     } catch (err) {
       console.error(`Failed to encrypt message for room ${roomId}:`, err);
+      addDebugLog(`Encryption error: ${err}`, 'error');
       return null;
     }
-  }, []);
+  }, [addDebugLog]);
 
   // 5. Decrypt Base64 ciphertext back to plaintext string
   const decryptMessage = useCallback(
@@ -572,13 +743,26 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           return null;
         }
 
-        return new TextDecoder('utf-8', { fatal: true }).decode(decryptedBytes);
+        const plaintext = new TextDecoder('utf-8', { fatal: true }).decode(decryptedBytes);
+
+        // Save decrypted message to IndexedDB cache
+        saveCachedMessage({
+          id: `${roomId}:${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          roomId,
+          senderId: '',
+          text: plaintext,
+          ciphertext: ciphertextB64,
+          timestamp: Date.now(),
+        });
+
+        addDebugLog(`Decrypted message in ${roomId}`, 'info');
+        return plaintext;
       } catch (err) {
         console.error(`Failed to decrypt message for room ${roomId}:`, err);
         return null;
       }
     },
-    []
+    [addDebugLog]
   );
 
   // 6. Check if an active group session exists for a given room
@@ -589,8 +773,9 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
   // 7. Request a welcome message from other room peers (e.g. after refresh)
   const requestWelcome = useCallback((roomId: string) => {
     if (!socket || !roomId || roomId === 'public') return;
+    addDebugLog(`Requesting MLS Welcome for room ${roomId}...`, 'info');
     socket.emit('request_mls_welcome', { roomId });
-  }, [socket]);
+  }, [socket, addDebugLog]);
 
   // 8. Get current group epoch for a room
   const getGroupEpoch = useCallback((roomId: string): number => {
@@ -609,6 +794,9 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       return updated;
     });
 
+    // Purge from IndexedDB
+    deleteRoomState(roomId);
+
     // Clean up peer locks and retry records
     for (const key of invitedPeersRef.current) {
       if (key.startsWith(`${roomId}:`)) {
@@ -621,8 +809,26 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       }
     }
 
+    addDebugLog(`Local MLS state purged for room ${roomId}`, 'warn');
     console.log(`[MLS] Local group and state purged for room ${roomId}`);
-  }, []);
+  }, [addDebugLog]);
+
+  // 10. Republish fresh KeyPackages manually
+  const republishKeyPackages = useCallback(() => {
+    const prov = providerRef.current;
+    const ident = identityRef.current;
+    if (!prov || !ident || !socket) return;
+
+    const KEY_PACKAGE_POOL_SIZE = 10;
+    const keyPackages: string[] = [];
+    for (let i = 0; i < KEY_PACKAGE_POOL_SIZE; i++) {
+      const kp = ident.key_package(prov);
+      keyPackages.push(bytesToBase64(kp.to_bytes()));
+    }
+    socket.emit('publish_key_packages', { keyPackages });
+    setKeyPackagesCount(KEY_PACKAGE_POOL_SIZE);
+    addDebugLog(`Manually republished ${KEY_PACKAGE_POOL_SIZE} KeyPackages`, 'info');
+  }, [socket, addDebugLog]);
 
   // Effect E: Listen for room deletion / MLS group destruction to purge local state
   useEffect(() => {
@@ -654,6 +860,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       identity,
       activeGroups,
       createGroup,
+      recreateGroupAsOwner,
       joinGroupFromWelcome,
       inviteUserToGroup,
       encryptMessage,
@@ -662,6 +869,10 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       requestWelcome,
       getGroupEpoch,
       destroyGroup,
+      republishKeyPackages,
+      debugLogs,
+      addDebugLog,
+      keyPackagesCount,
     }),
     [
       isInitialized,
@@ -669,6 +880,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       identity,
       activeGroups,
       createGroup,
+      recreateGroupAsOwner,
       joinGroupFromWelcome,
       inviteUserToGroup,
       encryptMessage,
@@ -677,6 +889,10 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       requestWelcome,
       getGroupEpoch,
       destroyGroup,
+      republishKeyPackages,
+      debugLogs,
+      addDebugLog,
+      keyPackagesCount,
     ]
   );
 
