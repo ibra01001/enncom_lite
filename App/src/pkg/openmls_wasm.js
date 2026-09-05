@@ -59,6 +59,32 @@ export class Group {
         wasm.__wbg_group_free(ptr, 0);
     }
     /**
+     * Clear a pending commit that was never accepted by the server.
+     * Use after an epoch_conflict to roll back to the previous epoch
+     * without advancing the group state.
+     * @param {Provider} provider
+     */
+    clear_pending_commit(provider) {
+        _assertClass(provider, Provider);
+        const ret = wasm.group_clear_pending_commit(this.__wbg_ptr, provider.__wbg_ptr);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Clear all pending proposals from the proposal store.
+     * Use after a failed commit or epoch conflict to restore the group
+     * to a clean Operational state where create_message() works again.
+     * @param {Provider} provider
+     */
+    clear_pending_proposals(provider) {
+        _assertClass(provider, Provider);
+        const ret = wasm.group_clear_pending_proposals(this.__wbg_ptr, provider.__wbg_ptr);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
      * @param {Provider} provider
      * @param {Identity} sender
      * @param {Uint8Array} msg

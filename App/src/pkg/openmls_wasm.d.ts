@@ -14,6 +14,18 @@ export class Group {
     private constructor();
     free(): void;
     [Symbol.dispose](): void;
+    /**
+     * Clear a pending commit that was never accepted by the server.
+     * Use after an epoch_conflict to roll back to the previous epoch
+     * without advancing the group state.
+     */
+    clear_pending_commit(provider: Provider): void;
+    /**
+     * Clear all pending proposals from the proposal store.
+     * Use after a failed commit or epoch conflict to restore the group
+     * to a clean Operational state where create_message() works again.
+     */
+    clear_pending_proposals(provider: Provider): void;
     create_message(provider: Provider, sender: Identity, msg: Uint8Array): Uint8Array;
     static create_new(provider: Provider, founder: Identity, group_id: string): Group;
     export_key(provider: Provider, label: string, context: Uint8Array, key_length: number): Uint8Array;
@@ -87,6 +99,8 @@ export interface InitOutput {
     readonly addmessages_commit: (a: number) => any;
     readonly addmessages_proposal: (a: number) => any;
     readonly addmessages_welcome: (a: number) => any;
+    readonly group_clear_pending_commit: (a: number, b: number) => [number, number];
+    readonly group_clear_pending_proposals: (a: number, b: number) => [number, number];
     readonly group_create_message: (a: number, b: number, c: number, d: number, e: number) => [number, number, number, number];
     readonly group_create_new: (a: number, b: number, c: number, d: number) => number;
     readonly group_export_key: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number, number, number];
@@ -106,8 +120,8 @@ export interface InitOutput {
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_start: () => void;

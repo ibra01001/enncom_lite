@@ -111,6 +111,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
   const providerRef = useRef<Provider | null>(null);
   const identityRef = useRef<Identity | null>(null);
   const roomEpochsRef = useRef<Map<string, number>>(new Map());
+  const roomOwnersRef = useRef<Map<string, string>>(new Map());
 
   const addDebugLog = useCallback((msg: string, type: 'info' | 'success' | 'warn' | 'error' = 'info') => {
     const time = new Date().toLocaleTimeString();
@@ -295,6 +296,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     interface CommitPayload {
       roomId: string;
       commit: string;
+      proposal?: string;
       epoch?: number;
     }
 
@@ -310,8 +312,24 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         const group = groupsRef.current.get(data.roomId);
         if (!prov || !group) return;
 
+        // 1. If committer bundled a proposal, process and store it first
+        if (data.proposal) {
+          try {
+            const proposalBytes = base64ToBytes(data.proposal);
+            group.process_message(prov, proposalBytes);
+          } catch (propErr) {
+            console.debug(`Proposal already present or failed to process in room ${data.roomId}:`, propErr);
+          }
+        }
+
+        // 2. Process the commit message
         const commitBytes = base64ToBytes(data.commit);
         group.process_message(prov, commitBytes);
+
+        // 3. Clear any consumed/orphaned proposals to ensure group stays operational
+        try {
+          group.clear_pending_proposals(prov);
+        } catch (_) {}
 
         if (typeof data.epoch === 'number') {
           roomEpochsRef.current.set(data.roomId, data.epoch);
@@ -323,15 +341,25 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         setActiveGroups((prev) => new Map(prev));
       } catch (err) {
         // Ignored if commit was from our own add or already processed epoch
-        console.debug(`MLS commit processed/ignored for room ${data.roomId}`);
+        console.debug(`MLS commit processed/ignored for room ${data.roomId}:`, err);
       }
     };
 
     const handleEpochConflict = (data: EpochConflictPayload) => {
       console.warn(
-        `[MLS] Epoch conflict in room ${data.roomId}: server at ${data.serverEpoch}, attempted ${data.attemptedEpoch}. Re-syncing...`
+        `[MLS] Epoch conflict in room ${data.roomId}: server at ${data.serverEpoch}, attempted ${data.attemptedEpoch}. Rolling back local staged state...`
       );
       roomEpochsRef.current.set(data.roomId, data.serverEpoch);
+      const prov = providerRef.current;
+      const group = groupsRef.current.get(data.roomId);
+      if (group && prov) {
+        try {
+          group.clear_pending_commit(prov);
+        } catch (_) {}
+        try {
+          group.clear_pending_proposals(prov);
+        } catch (_) {}
+      }
       // Re-request welcome from peers to reconcile RatchetTree
       if (socket && data.roomId && data.roomId !== 'public') {
         socket.emit('request_mls_welcome', { roomId: data.roomId });
@@ -357,6 +385,8 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     interface PeerJoinedPayload {
       peerId: string;
       room: string;
+      owner?: string;
+      designated_inviter?: string;
     }
 
     interface KeyPackageResponsePayload {
@@ -365,9 +395,32 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       keyPackage?: string;
     }
 
+    // Track room owner from room events
+    const handleRoomJoined = (data: { room?: string; owner?: string }) => {
+      if (data?.room && data?.owner) {
+        roomOwnersRef.current.set(data.room, data.owner);
+      }
+    };
+
+    const handleRoomsList = (data: { rooms?: Array<{ id: string; owner?: string }> }) => {
+      if (Array.isArray(data?.rooms)) {
+        for (const rm of data.rooms) {
+          if (rm.id && rm.owner) {
+            roomOwnersRef.current.set(rm.id, rm.owner);
+          }
+        }
+      }
+    };
+
     // When an existing group member detects a new peer entering the room
     const handlePeerJoined = (data: PeerJoinedPayload) => {
       if (!data?.room || data.room === 'public' || data.peerId === myId) return;
+
+      // Single inviter: Only the room owner invites new members to avoid race conditions
+      const roomOwner = data.designated_inviter || data.owner || roomOwnersRef.current.get(data.room);
+      if (roomOwner && myId && roomOwner !== myId) {
+        return;
+      }
 
       const inviteKey = `${data.room}:${data.peerId}`;
       if (invitedPeersRef.current.has(inviteKey)) return;
@@ -385,6 +438,12 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     // When a peer signals they entered without keys (e.g. page refresh or reconnect)
     const handlePeerNeedsWelcome = (data: PeerJoinedPayload) => {
       if (!data?.room || data.room === 'public' || data.peerId === myId) return;
+
+      // Single inviter check
+      const roomOwner = data.designated_inviter || data.owner || roomOwnersRef.current.get(data.room);
+      if (roomOwner && myId && roomOwner !== myId) {
+        return;
+      }
 
       const group = groupsRef.current.get(data.room);
       if (group) {
@@ -441,33 +500,76 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           const targetKeyPackage = KeyPackage.from_bytes(targetKeyBytes);
 
           const addMessages = group.propose_and_commit_add(prov, ident, targetKeyPackage);
-          group.merge_pending_commit(prov);
 
-          const tree = group.export_ratchet_tree();
+          const proposalB64 = bytesToBase64(addMessages.proposal);
           const welcomeB64 = bytesToBase64(addMessages.welcome);
-          const treeB64 = bytesToBase64(tree.to_bytes());
           const commitB64 = bytesToBase64(addMessages.commit);
 
           const currentEpoch = roomEpochsRef.current.get(data.roomId) ?? 0;
 
-          socket.emit('send_welcome', {
-            targetUserId: data.userId,
-            roomId: data.roomId,
-            welcome: welcomeB64,
-            tree: treeB64,
-            epoch: currentEpoch + 1,
-          });
+          // Defer merge_pending_commit until server ACK confirms commit is accepted
+          socket.emit(
+            'send_commit',
+            {
+              roomId: data.roomId,
+              commit: commitB64,
+              proposal: proposalB64,
+              epoch: currentEpoch,
+            },
+            (ack?: { success?: boolean; epoch?: number; error?: string; serverEpoch?: number }) => {
+              if (ack?.success) {
+                try {
+                  group.merge_pending_commit(prov);
+                  const newEpoch = ack.epoch ?? currentEpoch + 1;
+                  roomEpochsRef.current.set(data.roomId!, newEpoch);
 
-          socket.emit('send_commit', {
-            roomId: data.roomId,
-            commit: commitB64,
-            epoch: currentEpoch,
-          });
+                  // Export ratchet tree AFTER merge_pending_commit so the tree hash matches GroupInfo!
+                  const tree = group.export_ratchet_tree();
+                  const treeB64 = bytesToBase64(tree.to_bytes());
 
-          roomEpochsRef.current.set(data.roomId, currentEpoch + 1);
-          setActiveGroups((prev) => new Map(prev));
+                  // Send Welcome to new member AFTER commit is confirmed and merged
+                  socket.emit('send_welcome', {
+                    targetUserId: data.userId,
+                    roomId: data.roomId,
+                    welcome: welcomeB64,
+                    tree: treeB64,
+                    epoch: newEpoch,
+                  });
+
+                  saveRoomState({
+                    roomId: data.roomId!,
+                    name: data.roomId!,
+                    owner: myId || '',
+                    isOwner: true,
+                    epoch: newEpoch,
+                    hasGroup: true,
+                    ratchetTree: treeB64,
+                    updatedAt: Date.now(),
+                  });
+
+                  setActiveGroups((prev) => new Map(prev));
+                  addDebugLog(`Auto-invited #${data.userId} to ${data.roomId} (Epoch #${newEpoch})`, 'success');
+                } catch (mergeErr) {
+                  console.error(`Failed to merge pending commit for room ${data.roomId}:`, mergeErr);
+                  try { group.clear_pending_commit(prov); } catch (_) {}
+                  try { group.clear_pending_proposals(prov); } catch (_) {}
+                }
+              } else {
+                console.warn(`Commit rejected by server for room ${data.roomId}:`, ack);
+                try { group.clear_pending_commit(prov); } catch (_) {}
+                try { group.clear_pending_proposals(prov); } catch (_) {}
+                if (ack?.serverEpoch !== undefined) {
+                  roomEpochsRef.current.set(data.roomId!, ack.serverEpoch);
+                }
+                invitedPeersRef.current.delete(inviteKey);
+              }
+            }
+          );
         } catch (err) {
           console.error(`Failed to auto-invite peer ${data.userId} to room ${data.roomId}:`, err);
+          try { group.clear_pending_commit(prov); } catch (_) {}
+          try { group.clear_pending_proposals(prov); } catch (_) {}
+          invitedPeersRef.current.delete(inviteKey);
         }
       }
     };
@@ -475,13 +577,17 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     socket.on('peer_joined', handlePeerJoined);
     socket.on('peer_needs_welcome', handlePeerNeedsWelcome);
     socket.on('key_package_response', handleKeyPackageResponse);
+    socket.on('room_joined', handleRoomJoined);
+    socket.on('rooms_list', handleRoomsList);
 
     return () => {
       socket.off('peer_joined', handlePeerJoined);
       socket.off('peer_needs_welcome', handlePeerNeedsWelcome);
       socket.off('key_package_response', handleKeyPackageResponse);
+      socket.off('room_joined', handleRoomJoined);
+      socket.off('rooms_list', handleRoomsList);
     };
-  }, [socket, provider, myId]);
+  }, [socket, provider, myId, addDebugLog]);
 
   // ============================================================================
   // PART 4: Cryptographic Action Methods
@@ -505,6 +611,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       const newGroup = Group.create_new(currentProvider, currentIdentity, roomId);
       groupsRef.current.set(roomId, newGroup);
       roomEpochsRef.current.set(roomId, 0);
+      roomOwnersRef.current.set(roomId, myId || '');
       setActiveGroups((prev) => {
         const updated = new Map(prev);
         updated.set(roomId, newGroup);
@@ -546,6 +653,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       const newGroup = Group.create_new(currentProvider, currentIdentity, roomId);
       groupsRef.current.set(roomId, newGroup);
       roomEpochsRef.current.set(roomId, 0);
+      roomOwnersRef.current.set(roomId, myId || '');
       setActiveGroups((prev) => {
         const updated = new Map(prev);
         updated.set(roomId, newGroup);
@@ -644,53 +752,84 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           currentIdentity,
           targetKeyPackage
         );
-        group.merge_pending_commit(currentProvider);
 
-        const tree = group.export_ratchet_tree();
+        const proposalB64 = bytesToBase64(addMessages.proposal);
         const welcomeB64 = bytesToBase64(addMessages.welcome);
-        const treeB64 = bytesToBase64(tree.to_bytes());
         const commitB64 = bytesToBase64(addMessages.commit);
 
         if (socket) {
           const currentEpoch = roomEpochsRef.current.get(roomId) ?? 0;
 
-          // Send Welcome + RatchetTree to the new member
-          socket.emit('send_welcome', {
-            targetUserId,
-            roomId,
-            welcome: welcomeB64,
-            tree: treeB64,
-            epoch: currentEpoch + 1,
-          });
+          // Defer merge_pending_commit until server ACK confirms commit is accepted
+          socket.emit(
+            'send_commit',
+            {
+              roomId,
+              commit: commitB64,
+              proposal: proposalB64,
+              epoch: currentEpoch,
+            },
+            (ack?: { success?: boolean; epoch?: number; error?: string; serverEpoch?: number }) => {
+              if (ack?.success) {
+                try {
+                  group.merge_pending_commit(currentProvider);
+                  const newEpoch = ack.epoch ?? currentEpoch + 1;
+                  roomEpochsRef.current.set(roomId, newEpoch);
 
-          // Broadcast Commit to existing members so their ratchet tree / epoch stays in sync
-          socket.emit('send_commit', {
-            roomId,
-            commit: commitB64,
-            epoch: currentEpoch,
-          });
+                  // Export ratchet tree AFTER merge_pending_commit so the tree hash matches GroupInfo!
+                  const tree = group.export_ratchet_tree();
+                  const treeB64 = bytesToBase64(tree.to_bytes());
 
-          roomEpochsRef.current.set(roomId, currentEpoch + 1);
+                  // Send Welcome + RatchetTree to the new member
+                  socket.emit('send_welcome', {
+                    targetUserId,
+                    roomId,
+                    welcome: welcomeB64,
+                    tree: treeB64,
+                    epoch: newEpoch,
+                  });
 
-          // Update IndexedDB with new ratchet tree and epoch
-          saveRoomState({
-            roomId,
-            name: roomId,
-            owner: myId || '',
-            isOwner: true,
-            epoch: currentEpoch + 1,
-            hasGroup: true,
-            ratchetTree: treeB64,
-            updatedAt: Date.now(),
-          });
+                  // Update IndexedDB with new ratchet tree and epoch
+                  saveRoomState({
+                    roomId,
+                    name: roomId,
+                    owner: myId || '',
+                    isOwner: true,
+                    epoch: newEpoch,
+                    hasGroup: true,
+                    ratchetTree: treeB64,
+                    updatedAt: Date.now(),
+                  });
 
-          addDebugLog(`Invited #${targetUserId} to ${roomId} (Advanced to Epoch #${currentEpoch + 1})`, 'info');
+                  setActiveGroups((prev) => new Map(prev));
+                  addDebugLog(`Invited #${targetUserId} to ${roomId} (Advanced to Epoch #${newEpoch})`, 'info');
+                } catch (mergeErr) {
+                  console.error(`Failed to merge commit for room ${roomId}:`, mergeErr);
+                  try { group.clear_pending_commit(currentProvider); } catch (_) {}
+                  try { group.clear_pending_proposals(currentProvider); } catch (_) {}
+                }
+              } else {
+                console.warn(`Manual invite commit rejected for room ${roomId}:`, ack);
+                try { group.clear_pending_commit(currentProvider); } catch (_) {}
+                try { group.clear_pending_proposals(currentProvider); } catch (_) {}
+                if (ack?.serverEpoch !== undefined) {
+                  roomEpochsRef.current.set(roomId, ack.serverEpoch);
+                }
+              }
+            }
+          );
         }
 
-        return { welcome: welcomeB64, tree: treeB64 };
+        return { welcome: welcomeB64, tree: '' };
       } catch (err) {
         console.error(`Failed to invite user ${targetUserId} to room ${roomId}:`, err);
         addDebugLog(`Invite error for #${targetUserId}: ${err}`, 'error');
+        try {
+          if (currentProvider && group) {
+            group.clear_pending_commit(currentProvider);
+            group.clear_pending_proposals(currentProvider);
+          }
+        } catch (_) {}
         return null;
       }
     },
@@ -709,11 +848,29 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
 
     try {
       const plaintextBytes = new TextEncoder().encode(plaintext);
-      const ciphertextBytes = group.create_message(
-        currentProvider,
-        currentIdentity,
-        plaintextBytes
-      );
+      let ciphertextBytes: Uint8Array;
+      try {
+        ciphertextBytes = group.create_message(
+          currentProvider,
+          currentIdentity,
+          plaintextBytes
+        );
+      } catch (firstErr) {
+        const errStr = String(firstErr);
+        if (errStr.includes('pending proposal') || errStr.includes('PendingProposal')) {
+          console.warn(`Pending proposal detected during create_message for ${roomId}, clearing and retrying...`);
+          try {
+            group.clear_pending_proposals(currentProvider);
+          } catch (_) {}
+          ciphertextBytes = group.create_message(
+            currentProvider,
+            currentIdentity,
+            plaintextBytes
+          );
+        } else {
+          throw firstErr;
+        }
+      }
       const b64 = bytesToBase64(ciphertextBytes);
       addDebugLog(`Encrypted message for ${roomId} (${plaintext.length} chars)`, 'info');
       return b64;

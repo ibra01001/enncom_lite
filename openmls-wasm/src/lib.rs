@@ -187,9 +187,21 @@ impl Group {
             self.mls_group
                 .propose_add_member(provider.as_ref(), &sender.keypair, &new_member.0)?;
 
-        let (commit_msg, welcome_msg, _group_info) = self
+        // If commit_to_pending_proposals fails, the proposal is orphaned in the
+        // proposal store and will block all future create_message() calls.
+        // Clean it up on failure so the group stays usable.
+        let commit_result = self
             .mls_group
-            .commit_to_pending_proposals(&provider.0, &sender.keypair)?;
+            .commit_to_pending_proposals(&provider.0, &sender.keypair);
+
+        let (commit_msg, welcome_msg, _group_info) = match commit_result {
+            Ok(result) => result,
+            Err(e) => {
+                // Clear the orphaned proposal to restore the group to a clean state
+                let _ = self.mls_group.clear_pending_proposals(provider.0.storage());
+                return Err(e.into());
+            }
+        };
 
         let welcome_msg = welcome_msg.ok_or(NoWelcomeError)?;
 
@@ -208,6 +220,24 @@ impl Group {
         self.mls_group
             .merge_pending_commit(provider.as_mut())
             .map_err(|e| e.into())
+    }
+
+    /// Clear all pending proposals from the proposal store.
+    /// Use after a failed commit or epoch conflict to restore the group
+    /// to a clean Operational state where create_message() works again.
+    pub fn clear_pending_proposals(&mut self, provider: &Provider) -> Result<(), JsError> {
+        self.mls_group
+            .clear_pending_proposals(provider.0.storage())
+            .map_err(|e| JsError::new(&format!("clear_pending_proposals error: {e}")))
+    }
+
+    /// Clear a pending commit that was never accepted by the server.
+    /// Use after an epoch_conflict to roll back to the previous epoch
+    /// without advancing the group state.
+    pub fn clear_pending_commit(&mut self, provider: &Provider) -> Result<(), JsError> {
+        self.mls_group
+            .clear_pending_commit(provider.0.storage())
+            .map_err(|e| JsError::new(&format!("clear_pending_commit error: {e}")))
     }
 
     pub fn create_message(

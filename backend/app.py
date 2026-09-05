@@ -248,7 +248,13 @@ def handle_join_room(data):
 
     # Notify existing room members so they can initiate MLS welcome exchange
     if room != 'public':
-        emit('peer_joined', {'peerId': user_id, 'room': room}, to=room, include_self=False)
+        room_owner = room_meta.get('owner')
+        emit('peer_joined', {
+            'peerId': user_id,
+            'room': room,
+            'owner': room_owner,
+            'designated_inviter': room_owner
+        }, to=room, include_self=False)
 
     room_key = f"chat:messages:{room}"
     try:
@@ -374,7 +380,14 @@ def handle_request_welcome(data):
     room = data.get('roomId')
     user_id = get_current_user_id()
     if room and room != 'public':
-        emit('peer_needs_welcome', {'peerId': user_id, 'room': room}, to=room, include_self=False)
+        room_meta = r.hgetall(f"chat:room:{room}")
+        room_owner = room_meta.get('owner') if room_meta else None
+        emit('peer_needs_welcome', {
+            'peerId': user_id,
+            'room': room,
+            'owner': room_owner,
+            'designated_inviter': room_owner
+        }, to=room, include_self=False)
 
 @socketio.on('send_welcome')
 def handle_send_welcome(data):
@@ -390,10 +403,10 @@ def handle_send_welcome(data):
 @socketio.on('send_commit')
 def handle_send_commit(data):
     if not isinstance(data, dict):
-        return
+        return {'success': False, 'error': 'invalid_payload'}
     room = data.get('roomId')
     if not room or room == 'public':
-        return
+        return {'success': False, 'error': 'invalid_room'}
 
     expected_epoch = data.get('epoch')
     current_epoch_str = r.get(f"room:{room}:epoch")
@@ -408,16 +421,17 @@ def handle_send_commit(data):
                     'attemptedEpoch': int(expected_epoch)
                 })
                 print(f"Epoch conflict in {room}: client attempted {expected_epoch}, server at {current_epoch}")
-                return
+                return {'success': False, 'error': 'epoch_conflict', 'serverEpoch': current_epoch}
         except (ValueError, TypeError):
             pass
 
     new_epoch = r.incr(f"room:{room}:epoch")
     r.expire(f"room:{room}:epoch", TTL_SECONDS)
     data['epoch'] = new_epoch
-    # Broadcast commit to all other room members so their RatchetTree stays synchronized
+    # Broadcast commit (and proposal if present) to all other room members so their RatchetTree stays synchronized
     emit('mls_commit', data, to=room, include_self=False)
     print(f"Commit accepted for room {room}: epoch {current_epoch} -> {new_epoch}")
+    return {'success': True, 'epoch': new_epoch}
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
