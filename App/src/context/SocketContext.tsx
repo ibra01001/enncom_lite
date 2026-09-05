@@ -39,14 +39,26 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
   useEffect(() => {
     const clientToken = getClientToken();
 
-    const newSocket: Socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
+    const envUrl = import.meta.env.VITE_API_URL;
+    // When VITE_API_URL is empty, io() defaults to window.location.origin (routed via Vite proxy).
+    const socketUrl = envUrl && envUrl.trim() !== '' ? envUrl.trim() : undefined;
+
+    const newSocket: Socket = io(socketUrl, {
       query: { client_token: clientToken }, // send token in handshake
+      transports: ['polling', 'websocket'], // allow polling then upgrade to websocket
+    });
+
+    newSocket.on('connect', () => {
+      console.log('[Socket] Connected with sid:', newSocket.id);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('[Socket] Connection error:', err.message);
     });
 
     // Server is the single source of truth for our identity
     newSocket.on('session_info', (data: SessionInfoPayload) => {
       setMyId(data.myId);
-      
     });
 
     setSocket(newSocket);
