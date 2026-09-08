@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/features.css';
+import alxanderBg from '../../assets/alxander.svg';
 
 interface HeroSectionProps {
   onScrollDown?: () => void;
@@ -18,14 +19,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
   };
 
   return (
-    <section className="relative min-h-[85vh] flex-1 flex items-center px-6 md:px-16 border-b border-[#333333] bg-[#272727] ob-grid-bg overflow-hidden">
-      {/* Halftone Forest Texture Background */}
+    <section className="relative  flex-1 flex items-center px-6 md:px-16 border-b border-[#333333] bg-[#272727] ob-grid-bg overflow-hidden">
+      {/* Full-page SVG Background */}
       <div
-        className="absolute inset-0 z-0 opacity-[0.14] pointer-events-none"
+        className="absolute inset-0 z-0 pointer-events-none"
         style={{
-          backgroundImage: `url('https://railgun.org/assets/halftone-forest-menu.BpsjDTJ1.png')`,
+          backgroundImage: `url(${alxanderBg})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center bottom',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.3,
+          maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)',
+          height: '110vh',
+
+
         }}
       ></div>
 
@@ -35,15 +42,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
       </div>
 
       {/* Content: Left aligned container */}
-      <div className="relative z-10 max-w-6xl mx-auto w-full py-16">
+      <div className="relative z-10 w-full py-16 pl-0 pr-6 top-40">
         <div className="lg:w-1/2 flex flex-col items-start text-left space-y-6">
           {/* Statement Headline */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.12] text-white">
-            MESSAGE YOUR FRIENDS <br />
-            KEEP YOUR CONVERSATIONS <br />
-            <span className="text-[#FF3535] font-bold">
-              PRIVATE &amp; SAFE
-            </span>
+          <h1 className="text-9xl sm:text-10xl lg:text-10xl font-extrabold tracking-tight leading-[1.12] text-white ">
+            PRIVET <br /> CONVERSATIONS
           </h1>
 
           {/* Substatement */}
@@ -64,18 +67,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
         </div>
       </div>
 
-      {/* Floating Technical Decorator */}
-      <div className="absolute left-12 bottom-6 hidden lg:block ob-data text-zinc-400">
-        [SYS_RDY: <span className="text-emerald-400">OK</span>]<br />
-        ENC_LVL: <span className="text-white">RFC9420</span><br />
-        WASM_CORE: <span className="text-[#FF3535]">ACTIVE</span>
-      </div>
 
-      <div className="absolute right-12 bottom-6 hidden lg:block ob-data text-zinc-400 text-right">
-        <span className="text-white">MLS_128_DHKEMX25519</span><br />
-        <span className="text-white">AES128GCM_SHA256</span><br />
-        <span className="text-[#FF3535]">Ed25519_TreeKEM</span>
-      </div>
+
+
     </section>
   );
 };
