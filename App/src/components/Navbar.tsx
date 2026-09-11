@@ -163,7 +163,11 @@ const Navbar: React.FC = () => {
           className="ob-btn-accent text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded"
         >
           <span>Secure Chat</span>
-          <span className="material-symbols-outlined text-[16px]">security</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" viewBox="0 0 24 24">
+            <path d="M0 0h24v24H0z" fill="none" />
+            <path fill="currentColor" d="M20 2H4v2h16zm0 14H6v2h14zm2-12h-2v12h2zM4 4H2v18h2zm2 14H4v2h2zm0-6h4v2H6zm0-4h8v2H6z" />
+          </svg>
+
         </Link>
 
         {/* Mobile Hamburger Toggle */}

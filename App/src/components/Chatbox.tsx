@@ -4,18 +4,13 @@ import Rooms from './Rooms';
 import { useMls } from '../context/MlsContext';
 import MlsDebugger from './MlsDebugger';
 import { getCachedMessages } from '../utils/indexedDb';
+import '../styles/features.css';
 
 import type {
   Message,
   HistoryPayload,
   JoinErrorPayload,
 } from '../types/chat';
-
-const COLORS = {
-  bg: '#1e1e1e',
-  secondary: '#656565',
-  accent: '#FF3535',
-};
 
 interface RoomMeta {
   owner?: string;
@@ -330,118 +325,129 @@ const Chatbox: FC = () => {
   const isEmpty = !input.trim();
 
   return (
-    <div
-      style={{
-        backgroundColor: COLORS.bg,
-        fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
-      }}
-      className="w-full h-full flex flex-row overflow-hidden flex-1"
-    >
+    <div className="ob-root w-full h-full flex flex-row overflow-hidden flex-1 bg-[#272727]">
+      {/* Floating Join Error Alert */}
       {joinError && (
-        <div
-          style={{ backgroundColor: '#FF3535', color: '#fff', fontSize: 13 }}
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 font-semibold shadow-lg flex items-center gap-3"
-        >
-          <span>⚠ {joinError}</span>
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded bg-[#1e0e0e] border border-[#ff3535] border-l-4 text-white shadow-2xl flex items-center gap-3 animate-in fade-in duration-150">
+          <span className="material-symbols-outlined text-[#ff3535] text-[20px]">warning</span>
+          <span className="text-xs font-semibold">{joinError}</span>
           <button
+            type="button"
             onClick={() => setJoinError(null)}
-            className="ml-2 font-bold opacity-80 hover:opacity-100 cursor-pointer"
+            className="ml-3 text-zinc-400 hover:text-white p-1 cursor-pointer transition-colors"
           >
             ✕
           </button>
         </div>
       )}
-      <style>{`
-        .pc-input::placeholder { color: rgba(255,255,255,0.3); }
-        .pc-input:focus { border-color: rgba(255,255,255,0.6); }
-        .pc-btn:focus-visible { outline: 1px solid #FF3535; outline-offset: 2px; }
-        .pc-scroll::-webkit-scrollbar { width: 8px; }
-        .pc-scroll::-webkit-scrollbar-track { background: transparent; }
-        .pc-scroll::-webkit-scrollbar-thumb { background: #656565; }
-      `}</style>
 
       {/* Rooms Sidebar */}
       <Rooms currentRoom={currentRoom} onSelectRoom={setCurrentRoom} />
 
-      {/* Main Chat Box */}
-      <div className="flex-1 h-full flex flex-col min-w-0 bg-[#1e1e1e]">
+      {/* Main Chat Workspace */}
+      <div className="flex-1 h-full flex flex-col min-w-0 bg-[#272727] relative">
         {/* Chat Header */}
-        <div
-          style={{
-            backgroundColor: '#2A2A2A',
-            borderBottom: `1px solid ${COLORS.accent}`,
-          }}
-          className="h-14 shrink-0 flex items-center justify-between px-6"
-        >
+        <header className="h-16 shrink-0 flex items-center justify-between px-6 bg-[#181818] border-b border-[#333333] select-none">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[#ff3535] font-mono font-bold text-lg">#</span>
+              <h6 className="text-white font-bold text-base font-['Hanken_Grotesk',sans-serif] m-0 truncate tracking-tight">
+                {currentRoom === 'public' ? 'Public Chat' : currentRoom}
+              </h6>
+            </div>
+
+          </div>
+
           <div className="flex items-center gap-3">
-            <h4 className="text-white font-bold text-base m-0 capitalize">
-              #{currentRoom === 'public' ? 'Public Chat' : currentRoom}
-            </h4>
-            {isPrivateRoom ? (
-              <span
-                className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded flex items-center gap-1 ${isGroupActive
-                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/50'
-                  : 'bg-amber-950 text-amber-400 border border-amber-700/50'
+            {/* User Identity Chip */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#222222] border border-[#333333] text-zinc-300 ob-mono text-xs">
+              <span className="text-zinc-500">ID ::</span>
+              <span className="font-bold text-white">#{myId ?? '...'}</span>
+            </div>
+
+            {/* MLS Inspector Toggle Button (Only in Private E2EE Rooms) */}
+            {isPrivateRoom && (
+              <button
+                type="button"
+                onClick={() => setShowDebugger((v) => !v)}
+                className={`text-xs px-3 py-1.5 rounded border flex items-center gap-2 cursor-pointer transition-all ${showDebugger
+                  ? 'bg-[#ff3535] text-white border-[#ff3535] shadow-sm hover:bg-[#ff5252]'
+                  : 'bg-[#222222] text-zinc-300 border-[#333333] hover:text-white hover:border-zinc-500'
                   }`}
+                title="Toggle MLS Cryptographic Inspector Panel"
               >
-                <span>{isGroupActive ? 'E2EE Active' : 'Awaiting Keys'}</span>
-              </span>
-            ) : (
-              <span className="text-[11px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
-                Public Unencrypted
-              </span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                  <path d="M0 0h24v24H0z" fill="none" />
+                  <path fill="currentColor" d="M18 4h2v2h2v12h-2v2h-2v2H6v-2H4v-2H2V6h2V4h2V2h12zm-7 13h2v-6h-2zm0-8h2V7h-2z" />
+                </svg>
+
+                <span className="ob-mono font-bold">MLS Inspector</span>
+
+              </button>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowDebugger((v) => !v)}
-              className={`text-xs px-2.5 py-1 rounded border flex items-center gap-1.5 cursor-pointer transition-all ${
-                showDebugger
-                  ? 'bg-zinc-800 text-white border-zinc-600 shadow-sm'
-                  : 'bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700'
-              }`}
-              title="Toggle MLS Identity & Group Debug Inspector"
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isGroupActive ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'
-                }`}
-              />
-              <span className="font-semibold font-mono">MLS Inspector</span>
-            </button>
-            <span style={{ color: 'rgba(255,255,255,0.6)' }} className="text-xs font-mono font-semibold">
-              You are #{myId ?? '...'}
-            </span>
-          </div>
-        </div>
+        </header>
 
-        {/* Messages Container */}
-        <div ref={scrollRef} className="pc-scroll text-left flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+        {/* Messages Stream Container */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-4 bg-[#202020] ob-grid-bg relative text-left"
+        >
+          {messages.length === 0 && (
+            <div className="my-auto mx-auto max-w-lg p-6 rounded bg-[#181818]/90 border border-[#333333] border-l-2 border-l-[#ff3535] shadow-xl text-left">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-[#ff3535] text-[20px]">
+                  {isPrivateRoom ? 'shield_lock' : 'forum'}
+                </span>
+                <h2 className="text-sm font-bold text-white ob-mono uppercase tracking-wider m-0">
+                  {isPrivateRoom ? 'End-to-End Encrypted Session' : 'Public Broadcast Channel'}
+                </h2>
+              </div>
+              <p className="text-xs text-zinc-300 leading-relaxed font-sans mb-3">
+                {isPrivateRoom
+                  ? 'This channel is secured with OpenMLS (RFC 9420) TreeKEM ratcheting. Messages are encrypted locally in WebAssembly before transmission over the blind relay.'
+                  : 'This is a public plaintext channel. Messages transmitted here are visible to all connected participants without cryptographic protection.'}
+              </p>
+              <div className="flex items-center gap-3 text-[11px] ob-mono text-zinc-400">
+                <span>Cipher: {isPrivateRoom ? 'MLS_128_Ed25519_ChaCha20' : 'Plaintext UTF-8'}</span>
+                <span>•</span>
+                <span>Storage: IndexedDB</span>
+              </div>
+            </div>
+          )}
+
           {messages.map((msg) => {
             const isOwn = msg.senderId === myId;
             return (
               <div
                 key={msg.id}
-                className="flex flex-col gap-0.5"
-                style={{ opacity: msg.pending ? 0.5 : 1 }}
+                className="flex flex-col gap-1 w-full hover:bg-[#252525]/40 px-3 py-1.5 -mx-3 rounded transition-colors group"
+                style={{ opacity: msg.pending ? 0.6 : 1 }}
               >
+                {/* Meta Header */}
                 <div className="flex items-center gap-2">
-                  <span style={{ color: isOwn ? COLORS.accent : 'rgba(255,255,255,0.5)' }} className="text-xs font-semibold">
+                  <span
+                    className={`text-xs ob-mono font-bold ${isOwn ? 'text-[#ff3535]' : 'text-zinc-300'
+                      }`}
+                  >
                     #{msg.senderId}
                   </span>
-                  {msg.ciphertext && (
-                    <span className="text-[10px] text-emerald-400 font-mono font-semibold" title="End-to-End Encrypted via OpenMLS">
-                      [enc]
+                  {isOwn && (
+                    <span className="text-[10px] ob-mono text-zinc-500 font-medium">
+                      (you)
                     </span>
                   )}
+
                   {msg.pending && (
-                    <span className="text-[10px] text-zinc-500 font-mono">
+                    <span className="text-[10px] text-zinc-500 ob-mono flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-ping" />
                       sending...
                     </span>
                   )}
                 </div>
-                <p className="text-white text-sm leading-relaxed break-words m-0">
+
+                {/* Message Body */}
+                <p className="text-white text-sm leading-relaxed break-words m-0 font-sans whitespace-pre-wrap">
                   {msg.text}
                 </p>
               </div>
@@ -449,52 +455,68 @@ const Chatbox: FC = () => {
           })}
         </div>
 
-        {/* Input Bar */}
-        <div
-          style={{ borderTop: `1px solid ${COLORS.accent}` }}
-          className="shrink-0 flex items-center gap-3 px-6 py-4 bg-[#1e1e1e]"
-        >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              isPrivateRoom && !isGroupActive
-                ? "Connecting to MLS group session..."
-                : isPrivateRoom
-                  ? "Send encrypted message..."
-                  : "Send public message..."
-            }
-            aria-label="Message"
-            style={{
-              backgroundColor: COLORS.bg,
-              border: '1px solid rgba(255,255,255,0.2)',
-              color: '#ffffff',
-              borderRadius: 0,
-            }}
-            className="pc-input flex-1 text-sm px-4 py-2.5 outline-none min-w-0"
-          />
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={isEmpty || (isPrivateRoom && !isGroupActive)}
-            style={{
-              backgroundColor: COLORS.secondary,
-              border: `1px solid ${COLORS.secondary}`,
-              borderRadius: 0,
-              opacity: isEmpty || (isPrivateRoom && !isGroupActive) ? 0.5 : undefined,
-              cursor: isEmpty || (isPrivateRoom && !isGroupActive) ? 'not-allowed' : 'pointer',
-            }}
-            className="pc-btn text-white text-sm font-bold px-6 py-2.5 shrink-0 hover:opacity-80 active:opacity-70 transition-opacity"
-          >
-            Send
-          </button>
-        </div>
+        {/* Input Bar Section */}
+        <footer className="shrink-0 flex flex-col gap-2 px-6 py-4 bg-[#181818] border-t border-[#333333]">
+          <div className="flex items-center gap-3 bg-[#222222] border border-[#333333] focus-within:border-[#ff3535] rounded p-1.5 transition-colors shadow-inner">
+            <span className="material-symbols-outlined text-zinc-400 pl-2 text-[18px]">
+              {isPrivateRoom ? 'key' : 'chat'}
+            </span>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                isPrivateRoom && !isGroupActive
+                  ? "Connecting to MLS group session..."
+                  : isPrivateRoom
+                    ? "Type encrypted message (OpenMLS)..."
+                    : "Type public message..."
+              }
+              aria-label="Message"
+              className="flex-1 text-sm text-white placeholder-zinc-500 outline-none bg-transparent min-w-0 font-sans"
+            />
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={isEmpty || (isPrivateRoom && !isGroupActive)}
+              className="ob-btn-accent text-xs font-bold uppercase tracking-wider py-2 px-4 shrink-0 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <span>Send</span>
+              <span className="material-symbols-outlined text-[14px]">send</span>
+            </button>
+          </div>
+
+          {/* Micro Telemetry Bar */}
+          <div className="flex items-center justify-between px-1 text-[10px] ob-mono text-zinc-500">
+            <div className="flex items-center gap-2 truncate">
+              <span>CIPHER: MLS_128_Ed25519_ChaCha20</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="hidden sm:inline">RFC 9420 TREEKEM</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${!isPrivateRoom
+                  ? 'bg-zinc-500'
+                  : isGroupActive
+                    ? 'bg-[#10b981]'
+                    : 'bg-[#f59e0b]'
+                  }`}
+              />
+              <span>
+                {!isPrivateRoom
+                  ? 'PLAINTEXT'
+                  : isGroupActive
+                    ? 'RATCHET SYNCED'
+                    : 'AWAITING KEYPACKAGE'}
+              </span>
+            </div>
+          </div>
+        </footer>
       </div>
 
-      {/* MLS Debugger Inspector Side Panel */}
-      {showDebugger && (
+      {/* MLS Debugger Inspector Side Panel (Only in Private Rooms) */}
+      {isPrivateRoom && showDebugger && (
         <MlsDebugger
           currentRoom={currentRoom}
           isOwner={roomMeta.isOwner}
