@@ -55,6 +55,7 @@ export interface MlsContextType {
   getGroupEpoch: (roomId: string) => number;
   destroyGroup: (roomId: string) => void;
   republishKeyPackages: () => void;
+  syncEpoch: (roomId: string) => void;
   debugLogs: MlsLogEntry[];
   addDebugLog: (msg: string, type?: 'info' | 'success' | 'warn' | 'error') => void;
   keyPackagesCount: number;
@@ -76,6 +77,7 @@ const MlsContext = createContext<MlsContextType>({
   getGroupEpoch: () => 0,
   destroyGroup: () => { },
   republishKeyPackages: () => { },
+  syncEpoch: () => { },
   debugLogs: [],
   addDebugLog: () => { },
   keyPackagesCount: 0,
@@ -366,14 +368,90 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       }
     };
 
+    interface MissedCommitsPayload {
+      roomId: string;
+      commits: Array<{
+        epoch: number;
+        commit: string;
+        proposal?: string;
+      }>;
+      latestEpoch: number;
+    }
+
+    const handleMissedCommits = (data: MissedCommitsPayload) => {
+      if (!data?.roomId || !Array.isArray(data.commits)) return;
+      const prov = providerRef.current;
+      const group = groupsRef.current.get(data.roomId);
+      if (!prov || !group) return;
+
+      if (data.commits.length === 0) {
+        // No missed commits in backlog, but check if we're behind server epoch
+        if (typeof data.latestEpoch === 'number') {
+          const local = roomEpochsRef.current.get(data.roomId) ?? 0;
+          if (local < data.latestEpoch) {
+            addDebugLog(`Epoch gap in ${data.roomId} (${local} < ${data.latestEpoch}). Requesting fresh welcome...`, 'warn');
+            socket.emit('request_mls_welcome', { roomId: data.roomId });
+          }
+        }
+        return;
+      }
+
+      // Sort commits ascending by epoch to guarantee deterministic sequential replay
+      const sortedCommits = [...data.commits].sort((a, b) => a.epoch - b.epoch);
+      addDebugLog(`Replaying ${sortedCommits.length} missed commit(s) for ${data.roomId}...`, 'info');
+
+      let currentLocal = roomEpochsRef.current.get(data.roomId) ?? 0;
+      let replayFailed = false;
+
+      for (const item of sortedCommits) {
+        if (item.epoch <= currentLocal) {
+          continue; // Already processed this epoch
+        }
+
+        try {
+          if (item.proposal) {
+            try {
+              const propBytes = base64ToBytes(item.proposal);
+              group.process_message(prov, propBytes);
+            } catch (_) {}
+          }
+
+          const commitBytes = base64ToBytes(item.commit);
+          group.process_message(prov, commitBytes);
+          try {
+            group.clear_pending_proposals(prov);
+          } catch (_) {}
+
+          currentLocal = item.epoch;
+          roomEpochsRef.current.set(data.roomId, currentLocal);
+        } catch (replayErr) {
+          console.error(`Failed to replay commit epoch ${item.epoch} for ${data.roomId}:`, replayErr);
+          replayFailed = true;
+          break;
+        }
+      }
+
+      if (replayFailed) {
+        addDebugLog(`Commit replay interrupted for ${data.roomId}. Initiating self-healing welcome...`, 'warn');
+        socket.emit('request_mls_welcome', { roomId: data.roomId });
+      } else {
+        const finalEpoch = typeof data.latestEpoch === 'number' ? Math.max(currentLocal, data.latestEpoch) : currentLocal;
+        roomEpochsRef.current.set(data.roomId, finalEpoch);
+        addDebugLog(`Ratchet caught up to epoch #${finalEpoch} in ${data.roomId}`, 'success');
+        setActiveGroups((prev) => new Map(prev));
+      }
+    };
+
     socket.on('mls_commit', handleMlsCommit);
     socket.on('epoch_conflict', handleEpochConflict);
+    socket.on('missed_commits_response', handleMissedCommits);
 
     return () => {
       socket.off('mls_commit', handleMlsCommit);
       socket.off('epoch_conflict', handleEpochConflict);
+      socket.off('missed_commits_response', handleMissedCommits);
     };
-  }, [socket, provider]);
+  }, [socket, provider, addDebugLog]);
 
   // Effect D: Listen for 'peer_joined' and automated KeyPackage handshake
   const invitedPeersRef = useRef<Set<string>>(new Set());
@@ -395,10 +473,17 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       keyPackage?: string;
     }
 
-    // Track room owner from room events
-    const handleRoomJoined = (data: { room?: string; owner?: string }) => {
+    // Track room owner from room events and auto-detect epoch desynchronization
+    const handleRoomJoined = (data: { room?: string; owner?: string; epoch?: number }) => {
       if (data?.room && data?.owner) {
         roomOwnersRef.current.set(data.room, data.owner);
+      }
+      if (data?.room && typeof data.epoch === 'number' && data.room !== 'public') {
+        const localEpoch = roomEpochsRef.current.get(data.room) ?? 0;
+        if (groupsRef.current.has(data.room) && localEpoch < data.epoch) {
+          addDebugLog(`Room at epoch #${data.epoch}, local at #${localEpoch}. Catching up...`, 'info');
+          socket.emit('get_missed_commits', { roomId: data.room, fromEpoch: localEpoch });
+        }
       }
     };
 

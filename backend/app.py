@@ -21,6 +21,7 @@ MAX_HISTORY = 50
 TTL_SECONDS = 86400
 MAX_MSG_BYTES = 65536     # 64 KB message payload limit
 MAX_KEY_PACKAGES = 50     # Cap KeyPackage pool depth per user
+MAX_COMMIT_HISTORY = 30   # Retain last 30 commits per room for automatic epoch catch-up
 
 def get_or_create_id(client_token):
     """Derive a stable short ID from a client token.
@@ -193,6 +194,7 @@ def delete_room(data):
         pipe.delete(f"chat:messages:{room}")
         pipe.delete(f"chat:room:{room}")
         pipe.delete(f"room:{room}:epoch")
+        pipe.delete(f"room:{room}:commits")
         pipe.delete(f"room:{room}:active_users")
         pipe.srem(f"user:{user_id}:rooms", room)
         pipe.execute()
@@ -428,10 +430,63 @@ def handle_send_commit(data):
     new_epoch = r.incr(f"room:{room}:epoch")
     r.expire(f"room:{room}:epoch", TTL_SECONDS)
     data['epoch'] = new_epoch
+
+    # Persist commit to bounded backlog for offline / catching-up peers
+    commit_record = json.dumps({
+        'epoch': new_epoch,
+        'commit': data.get('commit'),
+        'proposal': data.get('proposal')
+    })
+    pipe = r.pipeline()
+    pipe.rpush(f"room:{room}:commits", commit_record)
+    pipe.ltrim(f"room:{room}:commits", -MAX_COMMIT_HISTORY, -1)
+    pipe.expire(f"room:{room}:commits", TTL_SECONDS)
+    pipe.execute()
+
     # Broadcast commit (and proposal if present) to all other room members so their RatchetTree stays synchronized
     emit('mls_commit', data, to=room, include_self=False)
     print(f"Commit accepted for room {room}: epoch {current_epoch} -> {new_epoch}")
     return {'success': True, 'epoch': new_epoch}
+
+@socketio.on('get_missed_commits')
+def handle_get_missed_commits(data):
+    if not isinstance(data, dict):
+        return
+    room = data.get('roomId')
+    if not room or room == 'public':
+        return
+    
+    user_id = get_current_user_id()
+    # Security check: verify user has access to room
+    user_rooms = r.smembers(f"user:{user_id}:rooms") or set()
+    if room not in user_rooms:
+        return
+
+    try:
+        from_epoch = int(data.get('fromEpoch', 0))
+    except (ValueError, TypeError):
+        from_epoch = 0
+
+    current_epoch_str = r.get(f"room:{room}:epoch")
+    current_epoch = int(current_epoch_str) if current_epoch_str is not None else 0
+
+    raw_commits = r.lrange(f"room:{room}:commits", 0, -1)
+    missed = []
+    for item in raw_commits:
+        try:
+            record = json.loads(item)
+            if record.get('epoch', 0) > from_epoch:
+                missed.append(record)
+        except Exception:
+            continue
+
+    # Emit only back to the requesting client socket
+    emit('missed_commits_response', {
+        'roomId': room,
+        'commits': missed,
+        'latestEpoch': current_epoch
+    })
+    print(f"Delivered {len(missed)} missed commit(s) for room {room} to user #{user_id} (requested from {from_epoch}, latest {current_epoch})")
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
