@@ -2,14 +2,62 @@ import React from 'react';
 
 export const SecurityComparison: React.FC = () => {
   const rows = [
-    { feature: 'Protocol Standard', enccom: 'RFC 9420 (MLS)', signal: 'Signal Protocol', matrix: 'Olm/Megolm', wire: 'MLS (partial)' },
-    { feature: 'Execution Environment', enccom: 'Browser WASM', signal: 'Native Binary', matrix: 'JavaScript', wire: 'Native Binary' },
-    { feature: 'Forward Secrecy', enccom: 'Continuous', signal: 'Per-Message', matrix: 'Per-Session', wire: 'Per-Message' },
-    { feature: 'Post-Compromise Security', enccom: 'Per Epoch', signal: 'None', matrix: 'None', wire: 'Partial' },
-    { feature: 'Group Key Agreement', enccom: 'TreeKEM O(log N)', signal: 'Pairwise O(N²)', matrix: 'Megolm Shared', wire: 'TreeKEM' },
-    { feature: 'Server Plaintext Access', enccom: '0 bytes', signal: 'Metadata', matrix: 'Metadata', wire: 'Metadata' },
-    { feature: 'Admin / Master Key', enccom: 'None', signal: 'Key Escrow', matrix: 'Homeserver', wire: 'Corporate Key' },
-    { feature: 'Max Group Size', enccom: '50,000+', signal: '1,000', matrix: '10,000', wire: 'Unknown' },
+    {
+      criterion: 'Encrypted chat',
+      enccom: 'E2EE using MLS',
+      discord: 'Normal text chat is not E2EE',
+      telegram: 'E2EE only in Secret Chats',
+      whatsapp: 'E2EE',
+      signal: 'E2EE',
+    },
+    {
+      criterion: 'Encrypted group chat',
+      enccom: 'MLS group encryption',
+      discord: 'Normal text groups are not E2EE',
+      telegram: 'Normal groups are cloud chats',
+      whatsapp: 'E2EE',
+      signal: 'E2EE',
+    },
+    {
+      criterion: 'Group encryption technology',
+      enccom: 'MLS / RFC 9420',
+      discord: 'Discord systems',
+      telegram: 'MTProto',
+      whatsapp: 'Signal-based protocol',
+      signal: 'Signal Protocol',
+    },
+    {
+      criterion: 'Server receives plaintext messages',
+      enccom: 'No',
+      discord: 'Yes for normal text',
+      telegram: 'Yes for normal cloud chats',
+      whatsapp: 'No',
+      signal: 'No',
+    },
+    {
+      criterion: 'Account required',
+      enccom: 'No',
+      discord: 'Yes',
+      telegram: 'Yes',
+      whatsapp: 'Yes',
+      signal: 'Yes',
+    },
+    {
+      criterion: 'Phone number required',
+      enccom: 'No',
+      discord: 'No',
+      telegram: 'Yes',
+      whatsapp: 'Yes',
+      signal: 'Yes',
+    },
+    {
+      criterion: 'Temporary identity',
+      enccom: 'Yes',
+      discord: 'No',
+      telegram: 'No',
+      whatsapp: 'No',
+      signal: 'No',
+    },
   ];
 
   return (
@@ -48,27 +96,30 @@ export const SecurityComparison: React.FC = () => {
 
         {/* Seamless Integrated Comparison Table (No Cards, Part of the Web) */}
         <div className="border-y border-white/10 overflow-x-auto relative z-10 mt-8">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
               <tr className="bg-[#1c1b1b]/40 border-b border-white/10">
                 <th className="py-5 px-6 font-['JetBrains_Mono',monospace] text-[12px] font-bold text-[#c7c4d7] tracking-widest uppercase border-r border-white/10">
-                  Security Dimension
+                  Criterion
                 </th>
                 <th className="py-5 px-6 border-r border-white/10 bg-[#161616] relative">
                   <div className="absolute top-0 left-0 w-full h-1 bg-[#FF3535]"></div>
                   <span className="font-['JetBrains_Mono',monospace] text-[14px] font-bold text-[#FF3535] tracking-widest uppercase flex items-center gap-2">
                     <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                    Enccom
+                    ENCCOM
                   </span>
                 </th>
                 <th className="py-5 px-6 font-['JetBrains_Mono',monospace] text-[12px] font-bold text-[#c7c4d7] tracking-widest uppercase border-r border-white/10">
-                  Signal
+                  Discord
                 </th>
                 <th className="py-5 px-6 font-['JetBrains_Mono',monospace] text-[12px] font-bold text-[#c7c4d7] tracking-widest uppercase border-r border-white/10">
-                  Matrix / Element
+                  Telegram
+                </th>
+                <th className="py-5 px-6 font-['JetBrains_Mono',monospace] text-[12px] font-bold text-[#c7c4d7] tracking-widest uppercase border-r border-white/10">
+                  WhatsApp
                 </th>
                 <th className="py-5 px-6 font-['JetBrains_Mono',monospace] text-[12px] font-bold text-[#c7c4d7] tracking-widest uppercase">
-                  Wire
+                  Signal
                 </th>
               </tr>
             </thead>
@@ -76,7 +127,7 @@ export const SecurityComparison: React.FC = () => {
               {rows.map((row, i) => (
                 <tr key={i}>
                   <td className="py-5 px-6 text-[13px] text-[#e5e2e1] font-semibold border-r border-white/10">
-                    {row.feature}
+                    {row.criterion}
                   </td>
                   <td className="py-5 px-6 text-[14px] border-r border-white/10 bg-[#FF3535]/[0.03] relative">
                     <div className="absolute top-0 left-0 w-0.5 h-full bg-[#FF3535]/40"></div>
@@ -85,13 +136,16 @@ export const SecurityComparison: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-5 px-6 text-[13px] text-zinc-400 border-r border-white/10">
-                    {row.signal}
+                    {row.discord}
                   </td>
                   <td className="py-5 px-6 text-[13px] text-zinc-400 border-r border-white/10">
-                    {row.matrix}
+                    {row.telegram}
+                  </td>
+                  <td className="py-5 px-6 text-[13px] text-zinc-400 border-r border-white/10">
+                    {row.whatsapp}
                   </td>
                   <td className="py-5 px-6 text-[13px] text-zinc-400">
-                    {row.wire}
+                    {row.signal}
                   </td>
                 </tr>
               ))}

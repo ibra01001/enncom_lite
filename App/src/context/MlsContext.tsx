@@ -114,6 +114,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
   const identityRef = useRef<Identity | null>(null);
   const roomEpochsRef = useRef<Map<string, number>>(new Map());
   const roomOwnersRef = useRef<Map<string, string>>(new Map());
+  const lastSyncAttemptRef = useRef<Map<string, number>>(new Map());
 
   const addDebugLog = useCallback((msg: string, type: 'info' | 'success' | 'warn' | 'error' = 'info') => {
     const time = new Date().toLocaleTimeString();
@@ -351,7 +352,6 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       console.warn(
         `[MLS] Epoch conflict in room ${data.roomId}: server at ${data.serverEpoch}, attempted ${data.attemptedEpoch}. Rolling back local staged state...`
       );
-      roomEpochsRef.current.set(data.roomId, data.serverEpoch);
       const prov = providerRef.current;
       const group = groupsRef.current.get(data.roomId);
       if (group && prov) {
@@ -362,9 +362,15 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
           group.clear_pending_proposals(prov);
         } catch (_) {}
       }
-      // Re-request welcome from peers to reconcile RatchetTree
+
+      const localEpoch = roomEpochsRef.current.get(data.roomId) ?? 0;
       if (socket && data.roomId && data.roomId !== 'public') {
-        socket.emit('request_mls_welcome', { roomId: data.roomId });
+        if (localEpoch < data.serverEpoch) {
+          addDebugLog(`Epoch conflict in ${data.roomId} (local #${localEpoch} < server #${data.serverEpoch}). Catching up...`, 'warn');
+          socket.emit('get_missed_commits', { roomId: data.roomId, fromEpoch: localEpoch });
+        } else {
+          socket.emit('request_mls_welcome', { roomId: data.roomId });
+        }
       }
     };
 
@@ -382,7 +388,13 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       if (!data?.roomId || !Array.isArray(data.commits)) return;
       const prov = providerRef.current;
       const group = groupsRef.current.get(data.roomId);
-      if (!prov || !group) return;
+      if (!prov || !group) {
+        addDebugLog(`No active local ratchet for ${data.roomId}. Requesting fresh Welcome...`, 'warn');
+        if (socket && data.roomId !== 'public') {
+          socket.emit('request_mls_welcome', { roomId: data.roomId });
+        }
+        return;
+      }
 
       if (data.commits.length === 0) {
         // No missed commits in backlog, but check if we're behind server epoch
@@ -431,13 +443,15 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         }
       }
 
-      if (replayFailed) {
-        addDebugLog(`Commit replay interrupted for ${data.roomId}. Initiating self-healing welcome...`, 'warn');
+      if (replayFailed || (typeof data.latestEpoch === 'number' && currentLocal < data.latestEpoch)) {
+        addDebugLog(
+          `Commit replay incomplete for ${data.roomId} (at #${currentLocal}, server #${data.latestEpoch}). Initiating self-healing welcome...`,
+          'warn'
+        );
         socket.emit('request_mls_welcome', { roomId: data.roomId });
       } else {
-        const finalEpoch = typeof data.latestEpoch === 'number' ? Math.max(currentLocal, data.latestEpoch) : currentLocal;
-        roomEpochsRef.current.set(data.roomId, finalEpoch);
-        addDebugLog(`Ratchet caught up to epoch #${finalEpoch} in ${data.roomId}`, 'success');
+        roomEpochsRef.current.set(data.roomId, currentLocal);
+        addDebugLog(`Ratchet caught up to epoch #${currentLocal} in ${data.roomId}`, 'success');
         setActiveGroups((prev) => new Map(prev));
       }
     };
@@ -1001,10 +1015,21 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         return plaintext;
       } catch (err) {
         console.error(`Failed to decrypt message for room ${roomId}:`, err);
+        // Safe auto-recovery: if decryption fails in a private room, trigger catch-up (throttled to 3s per room)
+        if (socket && roomId && roomId !== 'public') {
+          const now = Date.now();
+          const lastSync = lastSyncAttemptRef.current.get(roomId) ?? 0;
+          if (now - lastSync > 3000) {
+            lastSyncAttemptRef.current.set(roomId, now);
+            const localEpoch = roomEpochsRef.current.get(roomId) ?? 0;
+            addDebugLog(`Decryption failure in ${roomId}. Checking for missed commits (local #${localEpoch})...`, 'warn');
+            socket.emit('get_missed_commits', { roomId, fromEpoch: localEpoch });
+          }
+        }
         return null;
       }
     },
-    [addDebugLog]
+    [socket, addDebugLog]
   );
 
   // 6. Check if an active group session exists for a given room
@@ -1072,6 +1097,17 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     addDebugLog(`Manually republished ${KEY_PACKAGE_POOL_SIZE} KeyPackages`, 'info');
   }, [socket, addDebugLog]);
 
+  // 11. Synchronize epoch manually or on demand
+  const syncEpoch = useCallback(
+    (roomId: string) => {
+      if (!socket || !roomId || roomId === 'public') return;
+      const localEpoch = roomEpochsRef.current.get(roomId) ?? 0;
+      addDebugLog(`Syncing epoch for ${roomId} (local #${localEpoch})...`, 'info');
+      socket.emit('get_missed_commits', { roomId, fromEpoch: localEpoch });
+    },
+    [socket, addDebugLog]
+  );
+
   // Effect E: Listen for room deletion / MLS group destruction to purge local state
   useEffect(() => {
     if (!socket) return;
@@ -1112,6 +1148,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       getGroupEpoch,
       destroyGroup,
       republishKeyPackages,
+      syncEpoch,
       debugLogs,
       addDebugLog,
       keyPackagesCount,
@@ -1132,6 +1169,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       getGroupEpoch,
       destroyGroup,
       republishKeyPackages,
+      syncEpoch,
       debugLogs,
       addDebugLog,
       keyPackagesCount,

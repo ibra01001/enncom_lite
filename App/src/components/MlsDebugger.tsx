@@ -50,9 +50,8 @@ const Section: FC<SectionProps> = ({
             </span>
           )}
           <span
-            className={`font-['JetBrains_Mono',monospace] text-[13px] transition-transform duration-200 ${
-              open ? 'rotate-180 text-white' : 'rotate-0 text-zinc-500'
-            }`}
+            className={`font-['JetBrains_Mono',monospace] text-[13px] transition-transform duration-200 ${open ? 'rotate-180 text-white' : 'rotate-0 text-zinc-500'
+              }`}
           >
             ▾
           </span>
@@ -90,6 +89,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
     requestWelcome,
     recreateGroupAsOwner,
     republishKeyPackages,
+    syncEpoch,
     debugLogs,
     keyPackagesCount,
   } = useMls();
@@ -103,7 +103,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
 
   const copyId = () => {
     if (!myId) return;
-    navigator.clipboard.writeText(myId).catch(() => {});
+    navigator.clipboard.writeText(myId).catch(() => { });
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -146,19 +146,16 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
             <h2 className="font-bold text-sm tracking-tight text-[#e5e2e1] m-0">
               MLS Inspector
             </h2>
-            <span className="font-['JetBrains_Mono',monospace] text-[10px] px-1.5 py-0.5 rounded bg-[#1e1e1e] text-zinc-300 border border-white/10 font-bold">
-              RFC 9420
-            </span>
+
           </div>
 
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  groupActive
-                    ? 'bg-[#10b981] shadow-[0_0_6px_#10b981]'
-                    : 'bg-[#f59e0b] animate-pulse'
-                }`}
+                className={`w-2 h-2 rounded-full ${groupActive
+                  ? 'bg-[#10b981] shadow-[0_0_6px_#10b981]'
+                  : 'bg-[#f59e0b] animate-pulse'
+                  }`}
               />
               <span className="font-['JetBrains_Mono',monospace] text-[10px] text-zinc-400 font-bold uppercase">
                 {groupActive ? 'LIVE' : 'IDLE'}
@@ -187,14 +184,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
             tagColor={isInitialized ? 'text-[#FF3535]' : 'text-[#f59e0b]'}
             defaultOpen={true}
           >
-            <div>
-              <h3 className="text-base font-bold text-[#e5e2e1] tracking-tight mb-1">
-                Cryptographic Identity
-              </h3>
-              <p className="text-xs leading-relaxed text-[#c7c4d7]">
-                Generate signed HPKE prekey packages inside browser WASM memory. Zero plaintext identity is shared with the blind relay.
-              </p>
-            </div>
+
 
             <div className="mt-1 flex flex-col">
               <MetricRow label="Short ID">
@@ -230,14 +220,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
             tagColor={groupActive ? 'text-[#FF3535]' : 'text-[#f59e0b]'}
             defaultOpen={true}
           >
-            <div>
-              <h3 className="text-base font-bold text-[#e5e2e1] tracking-tight mb-1">
-                Ratchet Group Epochs
-              </h3>
-              <p className="text-xs leading-relaxed text-[#c7c4d7]">
-                Propose and commit group updates into the encrypted TreeKEM ratchet. Continuous forward secrecy is mathematically guaranteed.
-              </p>
-            </div>
+
 
             <div className="mt-1 flex flex-col">
               <MetricRow label="Session">
@@ -245,7 +228,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
               </MetricRow>
               <MetricRow label="Role">
                 <span className={isOwner ? 'text-[#f59e0b] font-bold' : 'text-zinc-300'}>
-                  {isOwner ? '👑 ROOM OWNER (FOUNDER)' : '👤 VERIFIED MEMBER'}
+                  {isOwner ? ' ROOM OWNER (FOUNDER)' : ' VERIFIED MEMBER'}
                 </span>
               </MetricRow>
               {isPrivate && (
@@ -272,11 +255,10 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
                     activePeers.map((p) => (
                       <span
                         key={p}
-                        className={`font-['JetBrains_Mono',monospace] text-[10px] px-1.5 py-0.5 ${
-                          p === myId
-                            ? 'bg-[#291212] text-[#ff8080] border border-[#ff3535]/50 font-bold'
-                            : 'bg-[#1e1e1e] text-zinc-300 border border-white/10'
-                        }`}
+                        className={`font-['JetBrains_Mono',monospace] text-[10px] px-1.5 py-0.5 ${p === myId
+                          ? 'bg-[#291212] text-[#ff8080] border border-[#ff3535]/50 font-bold'
+                          : 'bg-[#1e1e1e] text-zinc-300 border border-white/10'
+                          }`}
                       >
                         #{p}
                         {p === myId ? ' (you)' : ''}
@@ -295,14 +277,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
             tagColor="text-zinc-400"
             defaultOpen={false}
           >
-            <div>
-              <h3 className="text-base font-bold text-[#e5e2e1] tracking-tight mb-1">
-                Protocol Interventions
-              </h3>
-              <p className="text-xs leading-relaxed text-[#c7c4d7]">
-                Execute cryptographic state recovery, commit new epochs, or purge stale IndexedDB ratchets.
-              </p>
-            </div>
+
 
             <div className="mt-2 flex flex-col gap-2 font-['JetBrains_Mono',monospace]">
               {isPrivate && !groupActive && (
@@ -315,6 +290,19 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
                     Request Welcome Packet
                   </span>
                   <span className="material-symbols-outlined text-[#f59e0b] text-[16px]">sync</span>
+                </button>
+              )}
+
+              {isPrivate && (
+                <button
+                  type="button"
+                  onClick={() => syncEpoch(currentRoom)}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 bg-transparent hover:bg-white/[0.04] border border-white/10 hover:border-[#10B981]/40 text-white transition-all cursor-pointer group"
+                >
+                  <span className="text-[11px] uppercase tracking-wider text-zinc-300 group-hover:text-[#10B981]">
+                    Synchronize Ratchet Epoch
+                  </span>
+                  <span className="material-symbols-outlined text-[#10B981] text-[16px]">sync</span>
                 </button>
               )}
 
@@ -363,14 +351,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
             tagColor="text-zinc-500"
             defaultOpen={true}
           >
-            <div>
-              <h3 className="text-base font-bold text-[#e5e2e1] tracking-tight mb-1">
-                Zero-Knowledge Stream
-              </h3>
-              <p className="text-xs leading-relaxed text-[#c7c4d7]">
-                Live WebAssembly log emitting blinded TreeKEM and Welcome ratchet events.
-              </p>
-            </div>
+
 
             <div className="mt-1 bg-[#1e1e1e] border border-white/10 p-2.5 font-['JetBrains_Mono',monospace] text-[10px]">
               <div className="overflow-y-auto max-h-48 flex flex-col divide-y divide-white/5">
@@ -404,11 +385,6 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
               </div>
             </div>
 
-            {/* Micro Telemetry Footer */}
-            <div className="mt-1 flex justify-between items-center font-['JetBrains_Mono',monospace] text-[10px] text-zinc-500 pt-1">
-              <span>PAYLOAD</span>
-              <span className="text-[#10B981]">CIPHERTEXT ONLY // RFC 9420</span>
-            </div>
           </Section>
         </div>
       </aside>

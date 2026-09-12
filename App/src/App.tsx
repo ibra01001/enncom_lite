@@ -6,6 +6,7 @@ import About from './components/About';
 import Features from './components/Features';
 
 
+
 export default function App() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -22,7 +23,9 @@ export default function App() {
         path="/"
         element={
           <div className="relative flex-1 min-h-0 font-sans antialiased transition-colors duration-300 bg-[#272727] text-[#9ca3af] flex flex-col">
+           
             <HeroSection />
+       
 
           </div>
         }

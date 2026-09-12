@@ -360,7 +360,7 @@ const Chatbox: FC = () => {
 
           <div className="flex items-center gap-3">
             {/* User Identity Chip */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#222222] border border-[#333333] text-zinc-300 ob-mono text-xs">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1  text-zinc-300 ob-mono text-xs">
               <span className="text-zinc-500">ID ::</span>
               <span className="font-bold text-white">#{myId ?? '...'}</span>
             </div>
@@ -459,7 +459,15 @@ const Chatbox: FC = () => {
         <footer className="shrink-0 flex flex-col gap-2 px-6 py-4 bg-[#181818] border-t border-[#333333]">
           <div className="flex items-center gap-3 bg-[#222222] border border-[#333333] focus-within:border-[#ff3535] rounded p-1.5 transition-colors shadow-inner">
             <span className="material-symbols-outlined text-zinc-400 pl-2 text-[18px]">
-              {isPrivateRoom ? 'key' : 'chat'}
+              {isPrivateRoom ? <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                <path d="M0 0h24v24H0z" fill="none" />
+                <path fill="currentColor" d="M11 18H3v-2h8zm12-3h-2v3h-4v-2h2v-3h2v-2H11V8h2v1h10zM3 16H1V8h2zm14 0h-2v-1h-2v1h-2v-3h6zm-8-2H5v-4h4zm2-6H3V6h8z" />
+              </svg>
+                : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                  <path d="M0 0h24v24H0z" fill="none" />
+                  <path fill="currentColor" d="M5 2h6v2H5zm10 0h4v2h-4zM5 10h6v2H5zm10 0h4v2h-4zm4-6h2v6h-2zm-8 0h2v6h-2zM3 4h2v6H3zM0 18h2v4H0zm14 0h2v4h-2zm8 0h2v4h-2zM4 14h8v2H4zm12 0h4v2h-4zM2 16h2v2H2zm10 0h2v2h-2zm8 0h2v2h-2z" />
+                </svg>
+              }
             </span>
             <input
               type="text"
@@ -482,8 +490,12 @@ const Chatbox: FC = () => {
               disabled={isEmpty || (isPrivateRoom && !isGroupActive)}
               className="ob-btn-accent text-xs font-bold uppercase tracking-wider py-2 px-4 shrink-0 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
-              <span>Send</span>
-              <span className="material-symbols-outlined text-[14px]">send</span>
+
+              <svg xmlns="http://www.w3.org/2000/svg" width="2em" height="2em" viewBox="0 0 24 24">
+                <path d="M0 0h24v24H0z" fill="none" />
+                <path fill="currentColor" d="M4 19h4v2H2v-8h2zm8 0H8v-2h4zm4-2h-4v-2h4zm4-2h-4v-2h4zm-10-2H4v-2h6zm12 0h-2v-2h2zM8 5H4v6H2V3h6zm12 6h-4V9h4zm-4-2h-4V7h4zm-4-2H8V5h4z" />
+              </svg>
+
             </button>
           </div>
 

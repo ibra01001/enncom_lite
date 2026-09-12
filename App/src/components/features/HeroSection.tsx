@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../../styles/features.css';
 import alxanderBg from '../../assets/alxander.svg';
+import Arrow from '../Arrows';
 
 interface HeroSectionProps {
   onScrollDown?: () => void;
@@ -38,7 +39,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
 
       {/* Animated Arrows on Right Side */}
       <div className="absolute top-0 right-0 w-full lg:w-1/2 h-full z-0 pointer-events-none flex items-center justify-center opacity-60 lg:opacity-100">
-        {/*<AnimatedArrows />*/}
+
       </div>
 
       {/* Content: Left aligned container */}
@@ -56,9 +57,39 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
 
           {/* CTA Row */}
           <div className="flex flex-col sm:flex-row gap-4 pt-2">
-            <Link to="/chatbox" className="ob-btn-accent shadow-lg">
-              Start Secure Chat
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            <Link to="/chatbox" className=" shadow-lg">
+              <button
+                className="group relative flex h-14 w-64 items-center justify-between bg-[#ff3535] pl-6 pr-0 overflow-hidden rounded"
+              >
+                <span
+                  className="absolute inset-y-0 right-0 w-0 bg-[#1e1e1e] transition-all duration-300 ease-in-out group-hover:w-full"
+                ></span>
+
+                <span
+                  className="relative z-10 font-sans  font-bold font-[#ff3535] tracking-wider text-white transition-colors duration-300 group-hover:text-[#ff3535]"
+                >
+                  START CHATTING
+                </span>
+
+                <span
+                  className="relative z-10 flex h-full w-14 items-center justify-center bg-[#1e1e1e] text-[#ff3535]"
+                >
+                  <svg
+                    className="h-5 w-5 -rotate-45 transition-transform duration-300 ease-in-out group-hover:rotate-0"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="square"
+                      stroke-linejoin="miter"
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    ></path>
+                  </svg>
+                </span>
+              </button>
+
             </Link>
             <button onClick={handleExplore} className="ob-btn-ghost">
               Explore Architecture
