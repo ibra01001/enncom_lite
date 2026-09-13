@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 
 export const CryptographicFlow: React.FC = () => {
   const [inputText, setInputText] = useState('{"type": "transfer", "asset": "ETH", "amount": "1.5", "destination": "0x..."}');
-  const [epoch, setEpoch] = useState(49201);
   const [copied, setCopied] = useState(false);
   const [logExported, setLogExported] = useState(false);
 
-  const generateMockHex = (str: string, ep: number) => {
+  const generateMockHex = (str: string) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      hash = (hash << 5) - hash + str.charCodeAt(i) + ep * 31;
+      hash = (hash << 5) - hash + str.charCodeAt(i);
       hash |= 0;
     }
     const hexChars = '0123456789abcdef';
@@ -21,7 +20,7 @@ export const CryptographicFlow: React.FC = () => {
     return hex + '...';
   };
 
-  const cipherHex = generateMockHex(inputText, epoch);
+  const cipherHex = generateMockHex(inputText);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(cipherHex);
@@ -32,7 +31,7 @@ export const CryptographicFlow: React.FC = () => {
   const handleExportLog = () => {
     const logData = `[ENCCOM PACKET INSPECTOR LOG]
 Timestamp: ${new Date().toISOString()}
-System Epoch: ${epoch}
+
 Ratchet State: SYNCED
 Signature: Ed25519 Valid
 Source: ALICE
@@ -43,7 +42,7 @@ Terminus: BOB (Verified)`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `enccom_packet_epoch_${epoch}.txt`;
+
     a.click();
     URL.revokeObjectURL(url);
     setLogExported(true);
@@ -71,39 +70,6 @@ Terminus: BOB (Verified)`;
         }}
       ></div>
 
-      {/* Terminal Header */}
-      <header className="w-full border-b border-white/10 bg-[#272727]/90 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full px-4 sm:px-8 md:px-16 py-4 max-w-[1440px] mx-auto font-['JetBrains_Mono',monospace] text-[14px] leading-[20px]">
-          <div className="flex items-center gap-6 mb-3 md:mb-0">
-            <span className="text-[#FF3535] font-bold tracking-tight">ENCCOM // TERMINAL</span>
-            <div className="h-4 w-px bg-white/20 hidden sm:block"></div>
-            <span className="text-[#c7c4d7] flex items-center gap-2 text-xs sm:text-sm">
-              <span className="material-symbols-outlined text-[14px]">terminal</span>
-              v2.4.0-rc1
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-[#c7c4d7] text-xs sm:text-sm">
-            <button
-              onClick={() => setEpoch((e) => e + 1)}
-              className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer group rounded px-1.5 py-0.5 hover:bg-white/5"
-              title="Click to advance ratchet epoch"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
-              <span>System Epoch: <strong className="text-white font-mono">{epoch}</strong></span>
-              <span className="text-[10px] text-[#FF3535] opacity-0 group-hover:opacity-100 transition-opacity font-bold">[+1]</span>
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[14px]">sync_alt</span>
-              <span>Ratchet State: <strong className="text-[#10B981]">SYNCED</strong></span>
-            </div>
-            <div className="flex items-center gap-2 sm:border-l border-white/10 sm:pl-6">
-              <span className="material-symbols-outlined text-[14px]">security</span>
-              <span className="text-[#e5e2e1]">Network: <strong className="text-[#10B981]">SECURE</strong></span>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Asymmetrical Grid */}
       <main className="max-w-[1440px] mx-auto px-4 sm:px-8 md:px-16 py-12 md:py-16 relative z-10">

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
-
+import docsImg from '../assets/high-stack-of-assorted-documents-and-files-photo.jpeg';
+import qwerty from './../assets/QWERTY_keyboard.jpg';
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -80,14 +81,11 @@ const Navbar: React.FC = () => {
               {/* Halftone Image Right Column */}
               <div className="w-28 border-l border-[#333333] bg-[#0e0e0e] relative overflow-hidden flex items-center justify-center">
                 <img
-                  src="https://railgun.org/assets/tree-audit.Dez3ylXl.png"
-                  alt="Audit Halftone"
-                  className="h-full w-full object-cover opacity-60 hover:opacity-100 transition-opacity"
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
+                  src={docsImg}
+                  alt="Docs Files"
+                  className="h-full w-full object-cover grayscale opacity-60 hover:opacity-100 transition-opacity"
                 />
-                <div className="absolute inset-0 ob-halftone opacity-50 pointer-events-none"></div>
+                <div className="absolute inset-0 ob-halftone opacity-100 pointer-events"></div>
               </div>
             </div>
           </div>
@@ -134,14 +132,14 @@ const Navbar: React.FC = () => {
               {/* Halftone Image Right Column */}
               <div className="w-28 border-l border-[#333333] bg-[#0e0e0e] relative overflow-hidden flex items-center justify-center">
                 <img
-                  src="https://railgun.org/assets/tree-audit.Dez3ylXl.png"
+                  src={qwerty}
                   alt="Dev Halftone"
                   className="h-full w-full object-cover opacity-60 hover:opacity-100 transition-opacity"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
                   }}
                 />
-                <div className="absolute inset-0 ob-halftone opacity-50 pointer-events-none"></div>
+                <div className="absolute inset-0 ob-halftone opacity-100 pointer-events"></div>
               </div>
             </div>
           </div>
