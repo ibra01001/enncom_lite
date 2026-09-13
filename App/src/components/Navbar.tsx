@@ -9,18 +9,16 @@ const Navbar: React.FC = () => {
 
   const handleScrollTo = (id: string) => {
     setMobileMenuOpen(false);
+    window.dispatchEvent(new CustomEvent('features-goto-section', { detail: id }));
     if (window.location.pathname !== '/features') {
-      navigate('/features');
-      setTimeout(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      navigate(`/features#${id}`);
     } else {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+      window.location.hash = id;
     }
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full h-20 bg-[#272727] border-b border-[#333333] px-4 md:px-12 flex items-center justify-between select-none">
+    <header className="sticky top-0 z-50 w-full h-14 bg-[#272727] border-b border-[#333333] px-4 md:px-12 flex items-center justify-between select-none">
       {/* Brand */}
       <div className="flex items-center gap-8">
         <Link to="/" className="flex items-center gap-2.5 text-white font-bold text-xl tracking-tight hover:opacity-90 transition-opacity font-mono">

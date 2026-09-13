@@ -50,7 +50,7 @@ Terminus: BOB (Verified)`;
   };
 
   return (
-    <section id="packet-inspector" className="bg-[#272727] text-[#e5e2e1] min-h-screen font-['Hanken_Grotesk',sans-serif] relative overflow-hidden border-t border-white/10 selection:bg-[#FF3535] selection:text-white">
+    <section id="packet-inspector" className="bg-[#272727] text-[#e5e2e1] min-h-screen font-['Hanken_Grotesk',sans-serif] relative overflow-hidden  border-white/10 selection:bg-[#FF3535] selection:text-white">
       {/* Background SVG Noise Grain */}
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"

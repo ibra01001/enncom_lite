@@ -61,7 +61,7 @@ export const SecurityComparison: React.FC = () => {
   ];
 
   return (
-    <section id="comparison" className="bg-[#272727] text-[#e5e2e1] py-16 font-['Hanken_Grotesk',sans-serif] relative overflow-hidden selection:bg-[#FF3535] selection:text-white border-t border-white/10">
+    <section id="comparison" className="bg-[#272727] text-[#e5e2e1] py-16 font-['Hanken_Grotesk',sans-serif] relative overflow-hidden selection:bg-[#FF3535] selection:text-white  border-white/10">
       {/* Background SVG Noise Grain */}
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.03] z-0"

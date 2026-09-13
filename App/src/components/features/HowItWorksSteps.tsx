@@ -5,7 +5,7 @@ export const HowItWorksSteps: React.FC = () => {
   return (
     <section
       id="how-it-works"
-      className="bg-[#272727] text-[#e5e2e1] font-['Hanken_Grotesk',sans-serif] relative overflow-hidden border-t border-white/10 selection:bg-[#FF3535] selection:text-white"
+      className="bg-[#272727] text-[#e5e2e1] font-['Hanken_Grotesk',sans-serif] relative overflow-hidden  border-white/10 selection:bg-[#FF3535] selection:text-white"
     >
       {/* Background SVG Noise Grain */}
       <div
@@ -30,10 +30,7 @@ export const HowItWorksSteps: React.FC = () => {
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-12 border-b border-white/10">
           <div>
-            <div className="font-['JetBrains_Mono',monospace] text-xs font-bold text-[#FF3535] tracking-widest uppercase mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-[#FF3535]" />
-              PROTOCOL PIPELINE
-            </div>
+
             <h2 className="text-4xl sm:text-5xl md:text-[64px] leading-tight md:leading-[72px] font-extrabold tracking-[-0.04em] text-[#e5e2e1]">
               How it works
             </h2>
