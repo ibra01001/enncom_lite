@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
-import docsImg from '../assets/high-stack-of-assorted-documents-and-files-photo.jpeg';
-import qwerty from './../assets/QWERTY_keyboard.jpg';
+import docsImg from '../assets/alxander3.png';
+import qwerty from './../assets/alxander-2.png';
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
