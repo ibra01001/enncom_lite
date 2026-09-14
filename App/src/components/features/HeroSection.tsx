@@ -72,7 +72,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
                 </span>
 
                 <span
-                  className="relative z-10 flex h-full w-14 items-center justify-center bg-[#1e1e1e] text-[#ff3535]"
+                  className="relative z-10 flex h-full w-14 items-center justify-center bg-white text-[#ff3535]"
                 >
                   <svg
                     className="h-5 w-5 -rotate-45 transition-transform duration-300 ease-in-out group-hover:rotate-0"

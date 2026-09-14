@@ -393,28 +393,7 @@ const Chatbox: FC = () => {
           ref={scrollRef}
           className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-4 bg-[#202020] ob-grid-bg relative text-left"
         >
-          {messages.length === 0 && (
-            <div className="my-auto mx-auto max-w-lg p-6 rounded bg-[#181818]/90 border border-[#333333] border-l-2 border-l-[#ff3535] shadow-xl text-left">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-[#ff3535] text-[20px]">
-                  {isPrivateRoom ? 'shield_lock' : 'forum'}
-                </span>
-                <h2 className="text-sm font-bold text-white ob-mono uppercase tracking-wider m-0">
-                  {isPrivateRoom ? 'End-to-End Encrypted Session' : 'Public Broadcast Channel'}
-                </h2>
-              </div>
-              <p className="text-xs text-zinc-300 leading-relaxed font-sans mb-3">
-                {isPrivateRoom
-                  ? 'This channel is secured with OpenMLS (RFC 9420) TreeKEM ratcheting. Messages are encrypted locally in WebAssembly before transmission over the blind relay.'
-                  : 'This is a public plaintext channel. Messages transmitted here are visible to all connected participants without cryptographic protection.'}
-              </p>
-              <div className="flex items-center gap-3 text-[11px] ob-mono text-zinc-400">
-                <span>Cipher: {isPrivateRoom ? 'MLS_128_Ed25519_ChaCha20' : 'Plaintext UTF-8'}</span>
-                <span>•</span>
-                <span>Storage: IndexedDB</span>
-              </div>
-            </div>
-          )}
+
 
           {messages.map((msg) => {
             const isOwn = msg.senderId === myId;
