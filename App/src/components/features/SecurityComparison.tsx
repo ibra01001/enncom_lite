@@ -85,10 +85,10 @@ export const SecurityComparison: React.FC = () => {
         <div className="mb-10 border-b border-white/10 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
             <h2 className="text-4xl sm:text-5xl leading-tight font-extrabold tracking-[-0.04em] text-[#e5e2e1]">
-              Protocol Comparison
+              App Compartison
             </h2>
             <p className="text-base sm:text-[18px] leading-[28px] text-[#c7c4d7] mt-2 font-normal">
-              Enccom versus incumbent encrypted communication architectures.
+              A compartison of Enccom vs other messaging apps.
             </p>
           </div>
 

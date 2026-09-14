@@ -160,7 +160,7 @@ const QuadrantCube: React.FC<QuadrantCubeProps> = ({ cube }) => {
     const delay =
       delayOverride !== undefined
         ? delayOverride
-        : 5000 + Math.random() * 3000;
+        : 2000 + Math.random() * 3000;
 
     timerRef.current = setTimeout(() => {
       if (isHoveredRef.current || !cubeRef.current) return;
