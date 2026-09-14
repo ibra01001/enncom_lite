@@ -132,9 +132,9 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
             <path fill="currentColor" d="M21.34 27.43V25.9h-1.53v-1.52h-4.57v1.52h-3.05v1.53h-1.52v1.52H9.14v1.52h3.05V32h7.62v-1.53h3.05v-1.52h3.05v-1.52zm1.52-21.34h1.52v7.62h-1.52ZM9.14 9.14h4.58v1.53H9.14ZM6.1 27.43h3.04v1.52H6.1ZM4.57 25.9H6.1v1.53H4.57Zm-1.52-3.04h1.52v3.04H3.05Zm-1.52-3.05h1.52v3.05H1.53Z" />
           </svg>
 
-          <h2 className="text-base font-bold text-white tracking-tight font-['Hanken_Grotesk',sans-serif] m-0">
-            Sessions
-          </h2>
+          <h4 className="">
+            Rooms
+          </h4>
         </div>
         <button
           type="button"
