@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import gsap from 'gsap';
-import docsImg from '../../assets/high-stack-of-assorted-documents-and-files-photo.jpeg';
-import qwerty from '../../assets/QWERTY_keyboard.jpg';
+import docsImg from '../../assets/alxander3.svg';
+import qwerty from '../../assets/alxander-2.svg';
 import treeAuditImg from '../../assets/image_from_https_railgun.org_assets_tree_audit.dez3ylxl.png';
 import alxanderBg from '../../assets/alxander.svg';
 

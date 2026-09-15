@@ -38,6 +38,7 @@ const Chatbox: FC = () => {
     encryptMessage,
     decryptMessage,
     requestWelcome,
+    restoreGroupAsOwner,
     recreateGroupAsOwner,
     isInitialized,
   } = useMls();
@@ -195,13 +196,24 @@ const Chatbox: FC = () => {
           epoch: data.epoch,
         });
 
-        // Solution 2 Owner Auto-Recovery on Refresh:
-        // If owner enters an MLS room without active group, and is alone (or no peer answered):
+        // 3-stage owner recovery on refresh:
+        // B → restore from IndexedDB (preserves epoch)
+        // A → request a welcome from an active member (if peers online)
+        // Last resort → recreate from scratch only when alone in the room
         if (data.mls_enabled && !hasGroup(data.room) && data.isOwner) {
-          if (!data.activePeers || data.activePeers.length <= 1) {
-            console.log('[MLS Auto-Recovery] Owner alone in room after refresh. Re-initializing group...');
-            recreateGroupAsOwner(data.room);
-          }
+          restoreGroupAsOwner(data.room).then((result) => {
+            if (result === 'failed') {
+              if (data.activePeers && data.activePeers.length > 1) {
+                // Option A: at least one other peer is online — ask them to re-invite us
+                console.log('[MLS Recovery] Option A — requesting welcome from active peer...');
+                requestWelcome(data.room);
+              } else {
+                // Last resort: no peers online, no saved state — bootstrap a fresh group
+                console.log('[MLS Recovery] Last resort — re-initializing empty group as owner...');
+                recreateGroupAsOwner(data.room);
+              }
+            }
+          });
         }
       }
     };
@@ -243,7 +255,7 @@ const Chatbox: FC = () => {
       socket.off('peer_joined', handlePeerJoinedRoom);
       socket.off('peer_left', handlePeerLeftRoom);
     };
-  }, [socket, currentRoom, decryptMessage, myId, hasGroup, recreateGroupAsOwner]);
+  }, [socket, currentRoom, decryptMessage, myId, hasGroup, restoreGroupAsOwner, requestWelcome, recreateGroupAsOwner]);
 
   useEffect(() => {
     if (scrollRef.current) {

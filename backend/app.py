@@ -384,12 +384,24 @@ def handle_request_welcome(data):
     if room and room != 'public':
         room_meta = r.hgetall(f"chat:room:{room}")
         room_owner = room_meta.get('owner') if room_meta else None
+
+        # When the requester IS the owner, the designated_inviter must be a non-owner
+        # member — the owner cannot invite themselves. Pick the first available active peer
+        # that is not the requesting user.
+        if user_id == room_owner:
+            active_users = list(r.smembers(f"room:{room}:active_users") or set())
+            non_owner_peers = [u for u in active_users if u != user_id]
+            designated = non_owner_peers[0] if non_owner_peers else room_owner
+        else:
+            designated = room_owner
+
         emit('peer_needs_welcome', {
             'peerId': user_id,
             'room': room,
             'owner': room_owner,
-            'designated_inviter': room_owner
+            'designated_inviter': designated
         }, to=room, include_self=False)
+
 
 @socketio.on('send_welcome')
 def handle_send_welcome(data):

@@ -87,6 +87,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
     hasGroup,
     getGroupEpoch,
     requestWelcome,
+    restoreGroupAsOwner,
     recreateGroupAsOwner,
     republishKeyPackages,
     syncEpoch,
@@ -96,6 +97,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
 
   const [copied, setCopied] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const isPrivate = currentRoom !== 'public';
   const groupActive = isPrivate && hasGroup(currentRoom);
@@ -114,6 +116,17 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
     await clearAllMlsStorage();
     setClearing(false);
     window.location.reload();
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    const result = await restoreGroupAsOwner(currentRoom);
+    if (result === 'failed') {
+      // Option B failed (no saved welcome in cache) — fall through to Option A:
+      // ask an active member to re-invite us via a new Welcome packet.
+      requestWelcome(currentRoom);
+    }
+    setRestoring(false);
   };
 
   return (
@@ -150,17 +163,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${groupActive
-                  ? 'bg-[#10b981] shadow-[0_0_6px_#10b981]'
-                  : 'bg-[#f59e0b] animate-pulse'
-                  }`}
-              />
-              <span className="font-['JetBrains_Mono',monospace] text-[10px] text-zinc-400 font-bold uppercase">
-                {groupActive ? 'LIVE' : 'IDLE'}
-              </span>
-            </div>
+
 
             {onClose && (
               <button
@@ -179,8 +182,8 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
         <div className="flex-1 overflow-y-auto text-xs">
           {/* ── STEP 01 · IDENTITY ── */}
           <Section
-            label="01 — Prekeys"
-            tag={isInitialized ? 'RFC 9420 §7' : 'INITIALIZING'}
+            label="Prekeys"
+
             tagColor={isInitialized ? 'text-[#FF3535]' : 'text-[#f59e0b]'}
             defaultOpen={true}
           >
@@ -215,7 +218,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
 
           {/* ── STEP 02 · TREEKEM RATCHET ── */}
           <Section
-            label="02 — TreeKEM"
+            label="TreeKEM"
             tag={groupActive ? 'O(log N)' : 'PENDING'}
             tagColor={groupActive ? 'text-[#FF3535]' : 'text-[#f59e0b]'}
             defaultOpen={true}
@@ -233,7 +236,13 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
               </MetricRow>
               {isPrivate && (
                 <MetricRow label="Epoch">
-                  <span className="text-[#10B981] font-bold">#{currentEpoch} [SYNCED]</span>
+                  {groupActive ? (
+                    <span className="text-[#10B981] font-bold">#{currentEpoch} [SYNCED]</span>
+                  ) : restoring ? (
+                    <span className="text-[#f59e0b] font-bold animate-pulse">[RESTORING...]</span>
+                  ) : (
+                    <span className="text-zinc-500">[UNJOINED]</span>
+                  )}
                 </MetricRow>
               )}
               <MetricRow label="Secrecy">
@@ -272,7 +281,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
 
           {/* ── STEP 03 · PROTOCOL ACTIONS ── */}
           <Section
-            label="03 — Controls"
+            label=" Controls"
             tag="RECOVERY"
             tagColor="text-zinc-400"
             defaultOpen={false}
@@ -280,19 +289,45 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
 
 
             <div className="mt-2 flex flex-col gap-2 font-['JetBrains_Mono',monospace]">
-              {isPrivate && !groupActive && (
-                <button
-                  type="button"
-                  onClick={() => requestWelcome(currentRoom)}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 bg-transparent hover:bg-white/[0.04] border border-white/10 hover:border-white/20 text-white transition-all cursor-pointer group"
-                >
-                  <span className="text-[11px] uppercase tracking-wider text-zinc-300 group-hover:text-white">
-                    Request Welcome Packet
-                  </span>
-                  <span className="material-symbols-outlined text-[#f59e0b] text-[16px]">sync</span>
-                </button>
+
+              {/* ── TIER 1: Option B — Restore from IndexedDB cache ── */}
+              {isPrivate && isOwner && (
+                <>
+                  <p className="text-[10px] text-zinc-600 uppercase tracking-widest pt-1">Primary Recovery</p>
+                  <button
+                    type="button"
+                    onClick={handleRestore}
+                    disabled={restoring}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 bg-transparent hover:bg-white/[0.04] border border-white/10 hover:border-[#10B981]/40 text-white transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed group"
+                  >
+                    <span className="text-[11px] uppercase tracking-wider text-zinc-300 group-hover:text-[#10B981]">
+                      {restoring ? 'Restoring from Cache...' : 'Restore from Cache'}
+                    </span>
+                    <span className="material-symbols-outlined text-[#10B981] text-[16px]">
+                      {restoring ? 'hourglass_top' : 'history'}
+                    </span>
+                  </button>
+                </>
               )}
 
+              {/* ── TIER 2: Option A — Request welcome from peer ── */}
+              {isPrivate && !groupActive && (
+                <>
+                  <p className="text-[10px] text-zinc-600 uppercase tracking-widest pt-1">Peer Recovery</p>
+                  <button
+                    type="button"
+                    onClick={() => requestWelcome(currentRoom)}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 bg-transparent hover:bg-white/[0.04] border border-white/10 hover:border-white/20 text-white transition-all cursor-pointer group"
+                  >
+                    <span className="text-[11px] uppercase tracking-wider text-zinc-300 group-hover:text-white">
+                      Request Welcome Packet
+                    </span>
+                    <span className="material-symbols-outlined text-[#f59e0b] text-[16px]">sync</span>
+                  </button>
+                </>
+              )}
+
+              {/* ── TIER 3: Sync epoch (always available for private rooms) ── */}
               {isPrivate && (
                 <button
                   type="button"
@@ -306,19 +341,7 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
                 </button>
               )}
 
-              {isPrivate && isOwner && (
-                <button
-                  type="button"
-                  onClick={() => recreateGroupAsOwner(currentRoom)}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 bg-transparent hover:bg-white/[0.04] border border-white/10 hover:border-[#f59e0b]/40 text-[#f59e0b] transition-all cursor-pointer group"
-                >
-                  <span className="text-[11px] uppercase tracking-wider group-hover:text-[#fbbf24]">
-                    Re-initialize as Owner
-                  </span>
-                  <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-                </button>
-              )}
-
+              {/* ── Standard: Replenish KeyPackages ── */}
               <button
                 type="button"
                 onClick={republishKeyPackages}
@@ -329,6 +352,27 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
                 </span>
                 <span className="text-[#10B981] font-bold text-[13px]">+10</span>
               </button>
+
+              {/* ── DANGER ZONE ── */}
+              {isPrivate && isOwner && (
+                <>
+                  <p className="text-[10px] text-[#FF3535]/50 uppercase tracking-widest pt-1 border-t border-white/5 mt-1">⚠ Danger Zone</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Force re-initialize the MLS group from scratch? This will reset the epoch to 0 and disconnect all active members. Only use when no peers are online.')) {
+                        recreateGroupAsOwner(currentRoom);
+                      }
+                    }}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 bg-transparent hover:bg-[#FF3535]/10 border border-white/10 hover:border-[#FF3535]/40 text-[#ff8080] transition-all cursor-pointer group"
+                  >
+                    <span className="text-[11px] uppercase tracking-wider group-hover:text-[#FF3535]">
+                      Force Re-initialize
+                    </span>
+                    <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                  </button>
+                </>
+              )}
 
               <button
                 type="button"

@@ -20,6 +20,7 @@ import { bytesToBase64, base64ToBytes } from '../utils/mlsUtils';
 import {
   saveIdentity,
   saveRoomState,
+  getRoomState,
   deleteRoomState,
   saveCachedMessage,
 } from '../utils/indexedDb';
@@ -42,6 +43,7 @@ export interface MlsContextType {
   activeGroups: Map<string, Group>;
   createGroup: (roomId: string) => Group | null;
   recreateGroupAsOwner: (roomId: string) => Group | null;
+  restoreGroupAsOwner: (roomId: string) => Promise<'restored' | 'failed'>;
   joinGroupFromWelcome: (roomId: string, welcomeB64: string, treeB64: string) => Group | null;
   inviteUserToGroup: (
     roomId: string,
@@ -68,6 +70,7 @@ const MlsContext = createContext<MlsContextType>({
   activeGroups: new Map(),
   createGroup: () => null,
   recreateGroupAsOwner: () => null,
+  restoreGroupAsOwner: async () => 'failed',
   joinGroupFromWelcome: () => null,
   inviteUserToGroup: () => null,
   encryptMessage: () => null,
@@ -739,7 +742,8 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
     }
   }, [myId, addDebugLog]);
 
-  // 1.b Recreate group as room owner (used after page refresh / auto-recovery)
+  // 1.b Recreate group as room owner — LAST RESORT ONLY (use restoreGroupAsOwner first)
+  // Only safe when the owner is confirmed alone in the room with no active members.
   const recreateGroupAsOwner = useCallback((roomId: string): Group | null => {
     const currentProvider = providerRef.current;
     const currentIdentity = identityRef.current;
@@ -771,14 +775,63 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
         updatedAt: Date.now(),
       });
 
-      addDebugLog(`[OWNER RECOVERY] MLS group re-initialized for ${roomId}`, 'success');
+      addDebugLog(`[LAST RESORT] MLS group force re-initialized for ${roomId} at epoch #0`, 'warn');
       return newGroup;
     } catch (err) {
-      console.error(`Failed to recover MLS group as owner for ${roomId}:`, err);
-      addDebugLog(`Failed to recover group: ${err}`, 'error');
+      console.error(`Failed to force-recreate MLS group as owner for ${roomId}:`, err);
+      addDebugLog(`Failed to recreate group: ${err}`, 'error');
       return null;
     }
   }, [myId, addDebugLog]);
+
+  // 1.c Restore group from IndexedDB saved state — Option B (primary owner refresh recovery)
+  // Tries to re-join the existing ratchet group using the saved welcome + ratchet tree bytes.
+  // Returns 'restored' if successful, 'failed' if data is missing or corrupted.
+  // On success, emits get_missed_commits to catch up to the server's current epoch.
+  const restoreGroupAsOwner = useCallback(async (roomId: string): Promise<'restored' | 'failed'> => {
+    const currentProvider = providerRef.current;
+    if (!currentProvider || !roomId) return 'failed';
+
+    try {
+      const savedState = await getRoomState(roomId);
+
+      if (!savedState?.lastWelcome || !savedState?.ratchetTree) {
+        addDebugLog(`[RESTORE] No saved welcome/tree for ${roomId} — cannot restore from cache`, 'warn');
+        return 'failed';
+      }
+
+      const welcomeBytes = base64ToBytes(savedState.lastWelcome);
+      const treeBytes = base64ToBytes(savedState.ratchetTree);
+      const ratchetTree = RatchetTree.from_bytes(treeBytes);
+      const restoredGroup = Group.join(currentProvider, welcomeBytes, ratchetTree);
+
+      groupsRef.current.set(roomId, restoredGroup);
+      roomEpochsRef.current.set(roomId, savedState.epoch);
+      roomOwnersRef.current.set(roomId, myId || '');
+
+      setActiveGroups((prev) => {
+        const updated = new Map(prev);
+        updated.set(roomId, restoredGroup);
+        return updated;
+      });
+
+      addDebugLog(
+        `[RESTORE] Group restored from IndexedDB at epoch #${savedState.epoch} for ${roomId}`,
+        'success'
+      );
+
+      // Catch up any commits that happened while we were offline
+      if (socket) {
+        socket.emit('get_missed_commits', { roomId, fromEpoch: savedState.epoch });
+      }
+
+      return 'restored';
+    } catch (err) {
+      console.warn(`[MLS] IndexedDB restore failed for ${roomId}:`, err);
+      addDebugLog(`[RESTORE] Cache restore failed for ${roomId}: ${err}`, 'warn');
+      return 'failed';
+    }
+  }, [myId, socket, addDebugLog]);
 
   // 2. Join an existing group using received Welcome + RatchetTree packages
   const joinGroupFromWelcome = useCallback(
@@ -1139,6 +1192,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       activeGroups,
       createGroup,
       recreateGroupAsOwner,
+      restoreGroupAsOwner,
       joinGroupFromWelcome,
       inviteUserToGroup,
       encryptMessage,
@@ -1160,6 +1214,7 @@ export const MlsProvider = ({ children }: MlsProviderProps) => {
       activeGroups,
       createGroup,
       recreateGroupAsOwner,
+      restoreGroupAsOwner,
       joinGroupFromWelcome,
       inviteUserToGroup,
       encryptMessage,
