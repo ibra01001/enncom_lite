@@ -2,10 +2,13 @@
 ├── architecture.txt
 ├── dist
 │   ├── assets
+│   │   ├── alxander-2-BG6iOrFm.svg
+│   │   ├── alxander3-D39oL00R.svg
+│   │   ├── alxander-Fqr8zI8P.svg
 │   │   ├── image_from_https_railgun.org_assets_tree_audit.dez3ylxl-Be8Rg4i3.png
-│   │   ├── index-B0ydY9VL.js
-│   │   ├── index-Dhn1ynmo.css
-│   │   └── openmls_wasm_bg-C33SJVuE.wasm
+│   │   ├── index-BxP2KplA.js
+│   │   ├── index-ybmnUNss.css
+│   │   └── openmls_wasm_bg-C7XYZP7G.wasm
 │   ├── favicon.svg
 │   ├── icons.svg
 │   └── index.html
@@ -22,6 +25,9 @@
 │   ├── App.css
 │   ├── App.tsx
 │   ├── assets
+│   │   ├── alxander-2.svg
+│   │   ├── alxander3.svg
+│   │   ├── alxander.svg
 │   │   └── image_from_https_railgun.org_assets_tree_audit.dez3ylxl.png
 │   ├── components
 │   │   ├── About.tsx
@@ -37,6 +43,7 @@
 │   │   ├── Features.tsx
 │   │   ├── Logo.tsx
 │   │   ├── Members.tsx
+│   │   ├── MlsDebugger.tsx
 │   │   ├── Navbar.tsx
 │   │   └── Rooms.tsx
 │   ├── context
@@ -57,15 +64,18 @@
 │   ├── types
 │   │   └── chat.ts
 │   ├── utils
+│   │   ├── indexedDb.ts
 │   │   ├── mlsUtils.md
 │   │   └── mlsUtils.ts
-│   └── vite-env.d.ts
+│   ├── vite-env.d.ts
+│   └── webrtc
+│       └── peerConnection.ts
 ├── tsconfig.json
 ├── tsconfig.node.json
 ├── tsconfig.node.tsbuildinfo
 ├── tsconfig.tsbuildinfo
-├── vite.config.d.ts
-├── vite.config.js
 └── vite.config.ts
 
-13 directories, 56 files
+14 directories, 63 files
+
+tree -I "node_modules|build|.git" > architecture.txt
