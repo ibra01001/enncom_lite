@@ -5,9 +5,9 @@
 1. Users can create private rooms ... done 
 2. Users can change the room name after creation ... done
 3. Users can delete the room and remove everyone in it ... done
-4. encrypted messages 
+4. encrypted messages ... done 
 5. Voice call peer to peer
-6. End-to-end encrypted calls and messages
+
 7. send images and videos they should be encrypted and not stored on the server and installed directly to the user's device.
 
 
