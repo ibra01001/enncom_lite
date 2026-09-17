@@ -47,3 +47,8 @@ to solve this WEBrtc use ice (interactive connectivity establishment) to find th
 
 ### how we will use webrtc in the chat app
 
+ 1- we start by the signaling process using our existing chat app server
+ 
+ 2- in the fontend we use native Webrtc APIs (RTCPeerConnection, RTCiceCandidate, RTCSessionDescription) to establish a peer to peer connection
+ 
+ 3- 
