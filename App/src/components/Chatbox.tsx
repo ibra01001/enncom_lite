@@ -402,7 +402,7 @@ const Chatbox: FC = () => {
               </button>
             )}
 
-            {/* Discord-style Group Video Call Toggle Button */}
+            {/* Enccom Telecom Carrier Call Toggle Button */}
             {!isInCall ? (
               <button
                 type="button"
@@ -410,72 +410,37 @@ const Chatbox: FC = () => {
                   setIsInCall(true);
                   setCallMinimized(false);
                 }}
-                className="px-3 py-1.5 rounded-lg bg-[#23a55a]/15 hover:bg-[#23a55a]/25 text-[#23a55a] border border-[#23a55a]/30 flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-sm"
-                title="Start or Join Voice/Video Group Call"
+                className="group px-3 py-1.5 rounded bg-[#1e1e1e] hover:bg-[#ff3535] text-zinc-200 hover:text-white border border-[#333333] hover:border-[#ff3535] flex items-center gap-1.5 font-['JetBrains_Mono',monospace] text-xs font-bold uppercase tracking-wider cursor-pointer transition-all shadow-sm"
+                title="Initialize Encrypted Group Voice/Video Stream"
               >
-                <span className="material-symbols-outlined text-[16px]">videocam</span>
-                <span className="hidden sm:inline">Join Call</span>
+                <span className="material-symbols-outlined text-[16px] text-[#ff3535] group-hover:text-white transition-colors">
+                  videocam
+                </span>
+                <span className="hidden sm:inline">JOIN CALL</span>
               </button>
             ) : (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 font-['JetBrains_Mono',monospace]">
                 <button
                   type="button"
                   onClick={() => setCallMinimized((v) => !v)}
-                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all ${
-                    callMinimized
-                      ? 'bg-[#23a55a] text-white hover:bg-[#1f9250]'
-                      : 'bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700'
-                  }`}
-                  title={callMinimized ? 'Expand Video Call' : 'Minimize Video Call'}
+                  className={`px-3 py-1.5 rounded flex items-center gap-1.5 text-xs font-bold cursor-pointer uppercase tracking-wider transition-all ${callMinimized
+                    ? 'bg-[#10b981] text-black hover:bg-[#059669]'
+                    : 'bg-[#1e1e1e] text-zinc-300 hover:text-white border border-[#333333]'
+                    }`}
+                  title={callMinimized ? 'Expand Video Stage' : 'Minimize to Header'}
                 >
                   <span className="material-symbols-outlined text-[16px]">
                     {callMinimized ? 'sensors' : 'keyboard_arrow_down'}
                   </span>
-                  <span>{callMinimized ? 'Call Active' : 'Minimize'}</span>
+                  <span>{callMinimized ? 'CALL LIVE' : 'MINIMIZE'}</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsInCall(false)}
-                  className="p-1.5 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white transition-colors cursor-pointer"
-                  title="Disconnect Call"
-                >
-                  <span className="material-symbols-outlined text-[16px]">call_end</span>
-                </button>
+
               </div>
             )}
           </div>
         </header>
 
-        {/* Minimized Voice Banner (Discord-style Voice Connected Pill) */}
-        {isInCall && callMinimized && (
-          <div className="h-10 px-6 bg-[#1a231d] border-b border-[#23a55a]/30 flex items-center justify-between text-xs select-none z-10 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#23a55a] animate-pulse" />
-              <span className="text-[#23a55a] font-bold">Voice Connected</span>
-              <span className="text-zinc-500">•</span>
-              <span className="text-zinc-300 font-mono text-[11px]">#{currentRoom}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCallMinimized(false)}
-                className="px-2.5 py-1 rounded bg-[#23a55a] text-white font-semibold text-[11px] hover:bg-[#1f9250] flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[14px]">open_in_full</span>
-                <span>Expand Call</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsInCall(false)}
-                className="px-2.5 py-1 rounded bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white font-semibold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[14px]">call_end</span>
-                <span>Disconnect</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Video Call Stage (Full when active and not minimized) */}
         {isInCall && !callMinimized ? (
@@ -495,14 +460,14 @@ const Chatbox: FC = () => {
             {isCallChatOpen && (
               <div className="w-80 md:w-96 h-full flex flex-col bg-[#202020] border-l border-[#333333] shrink-0 z-20">
                 <div className="h-12 px-4 bg-[#181818] border-b border-[#333333] flex items-center justify-between text-xs">
-                  <span className="font-bold text-white flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-zinc-400">chat</span>
-                    In-Call Messages
+                  <span className="font-['JetBrains_Mono',monospace] font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff3535]" />
+                    IN-CALL TRANSMISSIONS
                   </span>
                   <button
                     type="button"
                     onClick={() => setIsCallChatOpen(false)}
-                    className="text-zinc-400 hover:text-white cursor-pointer"
+                    className="text-zinc-400 hover:text-white cursor-pointer font-mono"
                   >
                     ✕
                   </button>
@@ -510,11 +475,11 @@ const Chatbox: FC = () => {
 
                 <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
                   {messages.map((msg) => (
-                    <div key={msg.id} className="text-xs flex flex-col gap-0.5">
-                      <span className="font-bold text-[#ff3535] text-[10px] font-mono">
+                    <div key={msg.id} className="text-xs flex flex-col gap-1">
+                      <span className="font-bold text-[#ff3535] text-[10px] font-['JetBrains_Mono',monospace] uppercase">
                         #{msg.senderId}
                       </span>
-                      <p className="text-zinc-200 bg-[#272727] p-2 rounded-lg border border-[#333333] m-0">
+                      <p className="text-zinc-200 bg-[#181818] p-2.5 rounded border border-[#333333] border-l-2 border-l-[#ff3535] m-0 font-['JetBrains_Mono',monospace] text-xs">
                         {msg.text}
                       </p>
                     </div>
@@ -527,15 +492,15 @@ const Chatbox: FC = () => {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Send in-call chat..."
-                    className="flex-1 bg-[#272727] border border-[#333333] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#ff3535]"
+                    placeholder="Send in-call transmission..."
+                    className="flex-1 bg-[#272727] border border-[#333333] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#ff3535] font-['JetBrains_Mono',monospace]"
                   />
                   <button
                     type="button"
                     onClick={handleSend}
-                    className="px-3 py-1.5 bg-[#ff3535] hover:bg-[#e02e2e] text-white rounded text-xs font-bold cursor-pointer"
+                    className="px-3 py-1.5 bg-[#ff3535] hover:bg-[#ff5252] text-white rounded text-xs font-['JetBrains_Mono',monospace] font-bold uppercase tracking-wider cursor-pointer transition-colors"
                   >
-                    Send
+                    SEND
                   </button>
                 </div>
               </div>
@@ -550,115 +515,115 @@ const Chatbox: FC = () => {
             >
 
 
-          {messages.map((msg) => {
-            const isOwn = msg.senderId === myId;
-            return (
-              <div
-                key={msg.id}
-                className="flex flex-col gap-1 w-full hover:bg-[#252525]/40 px-3 py-1.5 -mx-3 rounded transition-colors group"
-                style={{ opacity: msg.pending ? 0.6 : 1 }}
-              >
-                {/* Meta Header */}
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs ob-mono font-bold ${isOwn ? 'text-[#ff3535]' : 'text-zinc-300'
-                      }`}
+              {messages.map((msg) => {
+                const isOwn = msg.senderId === myId;
+                return (
+                  <div
+                    key={msg.id}
+                    className="flex flex-col gap-1 w-full hover:bg-[#252525]/40 px-3 py-1.5 -mx-3 rounded transition-colors group"
+                    style={{ opacity: msg.pending ? 0.6 : 1 }}
                   >
-                    #{msg.senderId}
-                  </span>
-                  {isOwn && (
-                    <span className="text-[10px] ob-mono text-zinc-500 font-medium">
-                      (you)
-                    </span>
-                  )}
+                    {/* Meta Header */}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs ob-mono font-bold ${isOwn ? 'text-[#ff3535]' : 'text-zinc-300'
+                          }`}
+                      >
+                        #{msg.senderId}
+                      </span>
+                      {isOwn && (
+                        <span className="text-[10px] ob-mono text-zinc-500 font-medium">
+                          (you)
+                        </span>
+                      )}
 
-                  {msg.pending && (
-                    <span className="text-[10px] text-zinc-500 ob-mono flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-ping" />
-                      sending...
-                    </span>
-                  )}
-                </div>
+                      {msg.pending && (
+                        <span className="text-[10px] text-zinc-500 ob-mono flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-ping" />
+                          sending...
+                        </span>
+                      )}
+                    </div>
 
-                {/* Message Body */}
-                <p className="text-white text-sm leading-relaxed break-words m-0 font-sans whitespace-pre-wrap">
-                  {msg.text}
-                </p>
+                    {/* Message Body */}
+                    <p className="text-white text-sm leading-relaxed break-words m-0 font-sans whitespace-pre-wrap">
+                      {msg.text}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Input Bar Section */}
+            <footer className="shrink-0 flex flex-col gap-2 px-6 py-4 bg-[#181818] border-t border-[#333333]">
+              <div className="flex items-center gap-3 bg-[#222222] border border-[#333333] focus-within:border-[#ff3535] rounded p-1.5 transition-colors shadow-inner">
+                <span className="material-symbols-outlined text-zinc-400 pl-2 text-[18px]">
+                  {isPrivateRoom ? <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                    <path d="M0 0h24v24H0z" fill="none" />
+                    <path fill="currentColor" d="M11 18H3v-2h8zm12-3h-2v3h-4v-2h2v-3h2v-2H11V8h2v1h10zM3 16H1V8h2zm14 0h-2v-1h-2v1h-2v-3h6zm-8-2H5v-4h4zm2-6H3V6h8z" />
+                  </svg>
+                    : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                      <path d="M0 0h24v24H0z" fill="none" />
+                      <path fill="currentColor" d="M5 2h6v2H5zm10 0h4v2h-4zM5 10h6v2H5zm10 0h4v2h-4zm4-6h2v6h-2zm-8 0h2v6h-2zM3 4h2v6H3zM0 18h2v4H0zm14 0h2v4h-2zm8 0h2v4h-2zM4 14h8v2H4zm12 0h4v2h-4zM2 16h2v2H2zm10 0h2v2h-2zm8 0h2v2h-2z" />
+                    </svg>
+                  }
+                </span>
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    isPrivateRoom && !isGroupActive
+                      ? "Connecting to MLS group session..."
+                      : isPrivateRoom
+                        ? "Type encrypted message (OpenMLS)..."
+                        : "Type public message..."
+                  }
+                  aria-label="Message"
+                  className="flex-1 text-sm text-white placeholder-zinc-500 outline-none bg-transparent min-w-0 font-sans"
+                />
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={isEmpty || (isPrivateRoom && !isGroupActive)}
+                  className="ob-btn-accent text-xs font-bold uppercase tracking-wider py-2 px-4 shrink-0 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+
+                  <svg xmlns="http://www.w3.org/2000/svg" width="2em" height="2em" viewBox="0 0 24 24">
+                    <path d="M0 0h24v24H0z" fill="none" />
+                    <path fill="currentColor" d="M4 19h4v2H2v-8h2zm8 0H8v-2h4zm4-2h-4v-2h4zm4-2h-4v-2h4zm-10-2H4v-2h6zm12 0h-2v-2h2zM8 5H4v6H2V3h6zm12 6h-4V9h4zm-4-2h-4V7h4zm-4-2H8V5h4z" />
+                  </svg>
+
+                </button>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Input Bar Section */}
-        <footer className="shrink-0 flex flex-col gap-2 px-6 py-4 bg-[#181818] border-t border-[#333333]">
-          <div className="flex items-center gap-3 bg-[#222222] border border-[#333333] focus-within:border-[#ff3535] rounded p-1.5 transition-colors shadow-inner">
-            <span className="material-symbols-outlined text-zinc-400 pl-2 text-[18px]">
-              {isPrivateRoom ? <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
-                <path d="M0 0h24v24H0z" fill="none" />
-                <path fill="currentColor" d="M11 18H3v-2h8zm12-3h-2v3h-4v-2h2v-3h2v-2H11V8h2v1h10zM3 16H1V8h2zm14 0h-2v-1h-2v1h-2v-3h6zm-8-2H5v-4h4zm2-6H3V6h8z" />
-              </svg>
-                : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
-                  <path d="M0 0h24v24H0z" fill="none" />
-                  <path fill="currentColor" d="M5 2h6v2H5zm10 0h4v2h-4zM5 10h6v2H5zm10 0h4v2h-4zm4-6h2v6h-2zm-8 0h2v6h-2zM3 4h2v6H3zM0 18h2v4H0zm14 0h2v4h-2zm8 0h2v4h-2zM4 14h8v2H4zm12 0h4v2h-4zM2 16h2v2H2zm10 0h2v2h-2zm8 0h2v2h-2z" />
-                </svg>
-              }
-            </span>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                isPrivateRoom && !isGroupActive
-                  ? "Connecting to MLS group session..."
-                  : isPrivateRoom
-                    ? "Type encrypted message (OpenMLS)..."
-                    : "Type public message..."
-              }
-              aria-label="Message"
-              className="flex-1 text-sm text-white placeholder-zinc-500 outline-none bg-transparent min-w-0 font-sans"
-            />
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={isEmpty || (isPrivateRoom && !isGroupActive)}
-              className="ob-btn-accent text-xs font-bold uppercase tracking-wider py-2 px-4 shrink-0 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-
-              <svg xmlns="http://www.w3.org/2000/svg" width="2em" height="2em" viewBox="0 0 24 24">
-                <path d="M0 0h24v24H0z" fill="none" />
-                <path fill="currentColor" d="M4 19h4v2H2v-8h2zm8 0H8v-2h4zm4-2h-4v-2h4zm4-2h-4v-2h4zm-10-2H4v-2h6zm12 0h-2v-2h2zM8 5H4v6H2V3h6zm12 6h-4V9h4zm-4-2h-4V7h4zm-4-2H8V5h4z" />
-              </svg>
-
-            </button>
-          </div>
-
-          {/* Micro Telemetry Bar */}
-          <div className="flex items-center justify-between px-1 text-[10px] ob-mono text-zinc-500">
-            <div className="flex items-center gap-2 truncate">
-              <span>CIPHER: MLS_128_Ed25519_ChaCha20</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="hidden sm:inline">RFC 9420 TREEKEM</span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${!isPrivateRoom
-                  ? 'bg-zinc-500'
-                  : isGroupActive
-                    ? 'bg-[#10b981]'
-                    : 'bg-[#f59e0b]'
-                  }`}
-              />
-              <span>
-                {!isPrivateRoom
-                  ? 'PLAINTEXT'
-                  : isGroupActive
-                    ? 'RATCHET SYNCED'
-                    : 'AWAITING KEYPACKAGE'}
-              </span>
-            </div>
-          </div>
-        </footer>
+              {/* Micro Telemetry Bar */}
+              <div className="flex items-center justify-between px-1 text-[10px] ob-mono text-zinc-500">
+                <div className="flex items-center gap-2 truncate">
+                  <span>CIPHER: MLS_128_Ed25519_ChaCha20</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline">RFC 9420 TREEKEM</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${!isPrivateRoom
+                      ? 'bg-zinc-500'
+                      : isGroupActive
+                        ? 'bg-[#10b981]'
+                        : 'bg-[#f59e0b]'
+                      }`}
+                  />
+                  <span>
+                    {!isPrivateRoom
+                      ? 'PLAINTEXT'
+                      : isGroupActive
+                        ? 'RATCHET SYNCED'
+                        : 'AWAITING KEYPACKAGE'}
+                  </span>
+                </div>
+              </div>
+            </footer>
           </>
         )}
       </div>

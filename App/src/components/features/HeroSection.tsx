@@ -78,12 +78,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
                     className="h-5 w-5 -rotate-45 transition-transform duration-300 ease-in-out group-hover:rotate-0"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2.5"
+                    strokeWidth="2.5"
                     viewBox="0 0 24 24"
                   >
                     <path
-                      stroke-linecap="square"
-                      stroke-linejoin="miter"
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
                       d="M14 5l7 7m0 0l-7 7m7-7H3"
                     ></path>
                   </svg>
