@@ -120,3 +120,26 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+@keyframes reactionRise {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0px) scale(1.15);
+  }
+  80% {
+    opacity: 0.9;
+    transform: translateY(-120px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-180px) scale(0.8);
+  }
+}
+
+.animate-reaction-rise {
+  animation: reactionRise 2.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

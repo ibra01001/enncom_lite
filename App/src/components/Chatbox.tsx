@@ -4,6 +4,7 @@ import Rooms from './Rooms';
 import { useMls } from '../context/MlsContext';
 import MlsDebugger from './MlsDebugger';
 import { getCachedMessages } from '../utils/indexedDb';
+import VideoCall from './call/call';
 import '../styles/features.css';
 
 import type {
@@ -29,6 +30,9 @@ const Chatbox: FC = () => {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [showDebugger, setShowDebugger] = useState<boolean>(true);
   const [roomMeta, setRoomMeta] = useState<RoomMeta>({});
+  const [isInCall, setIsInCall] = useState<boolean>(false);
+  const [callMinimized, setCallMinimized] = useState<boolean>(false);
+  const [isCallChatOpen, setIsCallChatOpen] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef<number>(1);
   const clientMsgId = useRef<number>(0);
@@ -398,14 +402,152 @@ const Chatbox: FC = () => {
               </button>
             )}
 
+            {/* Discord-style Group Video Call Toggle Button */}
+            {!isInCall ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsInCall(true);
+                  setCallMinimized(false);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[#23a55a]/15 hover:bg-[#23a55a]/25 text-[#23a55a] border border-[#23a55a]/30 flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-sm"
+                title="Start or Join Voice/Video Group Call"
+              >
+                <span className="material-symbols-outlined text-[16px]">videocam</span>
+                <span className="hidden sm:inline">Join Call</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCallMinimized((v) => !v)}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all ${
+                    callMinimized
+                      ? 'bg-[#23a55a] text-white hover:bg-[#1f9250]'
+                      : 'bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700'
+                  }`}
+                  title={callMinimized ? 'Expand Video Call' : 'Minimize Video Call'}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {callMinimized ? 'sensors' : 'keyboard_arrow_down'}
+                  </span>
+                  <span>{callMinimized ? 'Call Active' : 'Minimize'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsInCall(false)}
+                  className="p-1.5 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white transition-colors cursor-pointer"
+                  title="Disconnect Call"
+                >
+                  <span className="material-symbols-outlined text-[16px]">call_end</span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
-        {/* Messages Stream Container */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-4 bg-[#202020] ob-grid-bg relative text-left"
-        >
+        {/* Minimized Voice Banner (Discord-style Voice Connected Pill) */}
+        {isInCall && callMinimized && (
+          <div className="h-10 px-6 bg-[#1a231d] border-b border-[#23a55a]/30 flex items-center justify-between text-xs select-none z-10 shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#23a55a] animate-pulse" />
+              <span className="text-[#23a55a] font-bold">Voice Connected</span>
+              <span className="text-zinc-500">•</span>
+              <span className="text-zinc-300 font-mono text-[11px]">#{currentRoom}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCallMinimized(false)}
+                className="px-2.5 py-1 rounded bg-[#23a55a] text-white font-semibold text-[11px] hover:bg-[#1f9250] flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[14px]">open_in_full</span>
+                <span>Expand Call</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsInCall(false)}
+                className="px-2.5 py-1 rounded bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white font-semibold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[14px]">call_end</span>
+                <span>Disconnect</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Video Call Stage (Full when active and not minimized) */}
+        {isInCall && !callMinimized ? (
+          <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative">
+            <div className="flex-1 min-w-0 h-full relative">
+              <VideoCall
+                roomId={currentRoom}
+                isPrivateRoom={isPrivateRoom}
+                myId={myId}
+                onClose={() => setIsInCall(false)}
+                onToggleChat={() => setIsCallChatOpen((v) => !v)}
+                isChatOpen={isCallChatOpen}
+              />
+            </div>
+
+            {/* In-Call Text Chat Side Drawer */}
+            {isCallChatOpen && (
+              <div className="w-80 md:w-96 h-full flex flex-col bg-[#202020] border-l border-[#333333] shrink-0 z-20">
+                <div className="h-12 px-4 bg-[#181818] border-b border-[#333333] flex items-center justify-between text-xs">
+                  <span className="font-bold text-white flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-zinc-400">chat</span>
+                    In-Call Messages
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCallChatOpen(false)}
+                    className="text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                  {messages.map((msg) => (
+                    <div key={msg.id} className="text-xs flex flex-col gap-0.5">
+                      <span className="font-bold text-[#ff3535] text-[10px] font-mono">
+                        #{msg.senderId}
+                      </span>
+                      <p className="text-zinc-200 bg-[#272727] p-2 rounded-lg border border-[#333333] m-0">
+                        {msg.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-3 bg-[#181818] border-t border-[#333333] flex gap-2">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Send in-call chat..."
+                    className="flex-1 bg-[#272727] border border-[#333333] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#ff3535]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    className="px-3 py-1.5 bg-[#ff3535] hover:bg-[#e02e2e] text-white rounded text-xs font-bold cursor-pointer"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Messages Stream Container */}
+            <div
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-4 bg-[#202020] ob-grid-bg relative text-left"
+            >
 
 
           {messages.map((msg) => {
@@ -517,6 +659,8 @@ const Chatbox: FC = () => {
             </div>
           </div>
         </footer>
+          </>
+        )}
       </div>
 
       {/* MLS Debugger Inspector Side Panel (Only in Private Rooms) */}
