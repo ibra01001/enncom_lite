@@ -1,10 +1,39 @@
 .
 ├── app.py
 ├── architecture.txt
+├── config.py
 ├── Dockerfile
+├── events
+│   ├── chat.py
+│   ├── connection.py
+│   ├── __init__.py
+│   ├── mls.py
+│   ├── __pycache__
+│   │   ├── chat.cpython-314.pyc
+│   │   ├── connection.cpython-314.pyc
+│   │   ├── __init__.cpython-314.pyc
+│   │   ├── mls.cpython-314.pyc
+│   │   └── rooms.cpython-314.pyc
+│   └── rooms.py
+├── extensions.py
 ├── __pycache__
-│   └── app.cpython-314.pyc
+│   ├── app.cpython-314.pyc
+│   ├── config.cpython-314.pyc
+│   └── extensions.cpython-314.pyc
 ├── requirements.txt
+├── services
+│   ├── auth_service.py
+│   ├── chat_service.py
+│   ├── __init__.py
+│   ├── mls_service.py
+│   ├── __pycache__
+│   │   ├── auth_service.cpython-314.pyc
+│   │   ├── chat_service.cpython-314.pyc
+│   │   ├── __init__.cpython-314.pyc
+│   │   ├── mls_service.cpython-314.pyc
+│   │   └── room_service.cpython-314.pyc
+│   └── room_service.py
+├── signaling.py
 └── WebSocket_connection.md
 
-2 directories, 6 files
+6 directories, 31 files
