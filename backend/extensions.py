@@ -1,3 +1,5 @@
+# Extensions like redis and flask-socketio 
+
 # pyrefly: ignore [missing-import]
 import redis
 from flask_socketio import SocketIO

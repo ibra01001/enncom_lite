@@ -1,3 +1,5 @@
+# configuration of the backend
+
 import os
 
 # Server & Redis Configuration

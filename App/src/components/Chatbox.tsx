@@ -382,9 +382,9 @@ const Chatbox: FC = () => {
               <button
                 type="button"
                 onClick={() => setShowDebugger((v) => !v)}
-                className={`text-xs px-3 py-1.5 rounded border flex items-center gap-2 cursor-pointer transition-all ${showDebugger
-                  ? 'bg-[#ff3535] text-white border-[#ff3535] shadow-sm hover:bg-[#ff5252]'
-                  : 'bg-[#222222] text-zinc-300 border-[#333333] hover:text-white hover:border-zinc-500'
+                className={`text-xs px-3 py-1.5  flex items-center gap-2 cursor-pointer transition-all ${showDebugger
+                  ? 'text-white shadow-sm'
+                  : 'text-zinc-300  hover:text-white '
                   }`}
                 title="Toggle MLS Cryptographic Inspector Panel"
               >
@@ -393,10 +393,11 @@ const Chatbox: FC = () => {
                   <path fill="currentColor" d="M18 4h2v2h2v12h-2v2h-2v2H6v-2H4v-2H2V6h2V4h2V2h12zm-7 13h2v-6h-2zm0-8h2V7h-2z" />
                 </svg>
 
-                <span className="ob-mono font-bold">MLS Inspector</span>
+
 
               </button>
             )}
+
           </div>
         </header>
 

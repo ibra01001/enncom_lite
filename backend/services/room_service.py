@@ -1,3 +1,5 @@
+# rooms life cycle logic
+
 import time
 import uuid
 import json
