@@ -83,7 +83,6 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
 }) => {
   const { myId } = useSocket();
   const {
-    isInitialized,
     hasGroup,
     getGroupEpoch,
     requestWelcome,
@@ -92,23 +91,14 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
     republishKeyPackages,
     syncEpoch,
     debugLogs,
-    keyPackagesCount,
   } = useMls();
 
-  const [copied, setCopied] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
   const isPrivate = currentRoom !== 'public';
   const groupActive = isPrivate && hasGroup(currentRoom);
   const currentEpoch = isPrivate ? getGroupEpoch(currentRoom) : 0;
-
-  const copyId = () => {
-    if (!myId) return;
-    navigator.clipboard.writeText(myId).catch(() => { });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
 
   const handleClearDb = async () => {
     if (!window.confirm('Clear local IndexedDB MLS cache? You will need to refresh the page.')) return;
@@ -180,42 +170,6 @@ const MlsDebugger: FC<MlsDebuggerProps> = ({
 
         {/* Seamless Integrated Flow (HowItWorksSteps Style, Collapsible Dropdowns) */}
         <div className="flex-1 overflow-y-auto text-xs">
-          {/* ── STEP 01 · IDENTITY ── */}
-          <Section
-            label="Prekeys"
-
-            tagColor={isInitialized ? 'text-[#FF3535]' : 'text-[#f59e0b]'}
-            defaultOpen={true}
-          >
-
-
-            <div className="mt-1 flex flex-col">
-              <MetricRow label="Short ID">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-white font-bold">#{myId ?? '...'}</span>
-                  <button
-                    type="button"
-                    onClick={copyId}
-                    className="text-[10px] text-zinc-400 hover:text-[#FF3535] underline cursor-pointer transition-colors"
-                  >
-                    {copied ? 'copied!' : 'copy'}
-                  </button>
-                </div>
-              </MetricRow>
-              <MetricRow label="KeyPackages">
-                <span className={keyPackagesCount > 0 ? 'text-[#10B981]' : 'text-[#f59e0b]'}>
-                  {keyPackagesCount} ready
-                </span>
-              </MetricRow>
-              <MetricRow label="Storage">
-                <span className="text-zinc-300">IndexedDB (v1)</span>
-              </MetricRow>
-              <MetricRow label="Cipher">
-                <span className="text-[#FF3535]">MLS_128_Ed25519_ChaCha20</span>
-              </MetricRow>
-            </div>
-          </Section>
-
           {/* ── STEP 02 · TREEKEM RATCHET ── */}
           <Section
             label="TreeKEM"
