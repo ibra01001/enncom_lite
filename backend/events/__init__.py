@@ -4,3 +4,4 @@ def register_events():
     from . import rooms
     from . import chat
     from . import mls
+    from . import call
