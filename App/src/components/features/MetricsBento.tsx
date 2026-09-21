@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import gsap from 'gsap';
-import docsImg from '../../assets/alxander3.svg';
-import qwerty from '../../assets/alxander-2.svg';
-import treeAuditImg from '../../assets/image_from_https_railgun.org_assets_tree_audit.dez3ylxl.png';
-import alxanderBg from '../../assets/alxander.svg';
+import docsImg from '../../assets/server.jpg';
+import qwerty from '../../assets/fast.jpg';
+import treeAuditImg from '../../assets/messenger-groupchat-visual.jpg';
+import alxanderBg from '../../assets/lock.jpg';
 
 interface CubeQuadrant {
   id: string;
