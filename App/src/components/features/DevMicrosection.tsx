@@ -86,14 +86,43 @@ socket.on('chat message', (msg) => {
     },
   };
 
-  const handleCopyInstall = () => {
-    navigator.clipboard.writeText(installCommand);
+  const copyText = async (text: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+      throw new Error('clipboard unavailable');
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, 99999);
+        const ok = document.execCommand('copy');
+        ta.remove();
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  };
+
+  const handleCopyInstall = async () => {
+    const ok = await copyText(installCommand);
+    if (!ok) return;
     setCopiedInstall(true);
     setTimeout(() => setCopiedInstall(false), 2000);
   };
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(snippets[activeSnippetTab].code);
+  const handleCopyCode = async () => {
+    const ok = await copyText(snippets[activeSnippetTab].code);
+    if (!ok) return;
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };

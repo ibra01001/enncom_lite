@@ -13,8 +13,8 @@ interface Props {
 const mockParticipants = (myId: string | null): CallParticipant[] => [
   { id: myId || 'user-local', name: `YOU [${(myId || 'LOCAL').slice(0, 6).toUpperCase()}]`, isLocal: true, isMuted: false, isVideoOn: false, isSpeaking: false, volume: 100, signalStrength: 3, role: 'HOST', avatarColor: '#ff3535' },
   { id: 'peer-alex-92', name: 'ALICE ', isLocal: false, isMuted: false, isVideoOn: true, isSpeaking: true, audioLevel: 80, volume: 100, signalStrength: 3, role: 'PEER_01', avatarColor: '#242424' },
-  { id: 'peer-elena-44', name: 'BOB [NODE_OPERATOR]', isLocal: false, isMuted: true, isVideoOn: false, isSpeaking: false, volume: 90, signalStrength: 2, role: 'PEER_02', avatarColor: '#1c1c1c' },
-  { id: 'peer-cipher-10', name: 'ZERO_KNOWLEDGE [VALIDATOR]', isLocal: false, isMuted: false, isVideoOn: false, isSpeaking: false, audioLevel: 25, volume: 100, signalStrength: 3, role: 'PEER_03', avatarColor: '#202020' },
+  { id: 'peer-elena-44', name: 'BOB ', isLocal: false, isMuted: true, isVideoOn: false, isSpeaking: false, volume: 90, signalStrength: 2, role: 'PEER_02', avatarColor: '#1c1c1c' },
+  { id: 'peer-cipher-10', name: 'BRAHIM', isLocal: false, isMuted: false, isVideoOn: false, isSpeaking: false, audioLevel: 25, volume: 100, signalStrength: 3, role: 'PEER_03', avatarColor: '#202020' },
 ];
 
 export const VideoCall: React.FC<Props> = ({ roomId: _roomId, isPrivateRoom = false, myId = 'local-user', onClose }) => {
