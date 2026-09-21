@@ -1,13 +1,7 @@
 import { useState, useEffect, useRef, type FC, type FormEvent, type MouseEvent } from 'react';
 import gsap from 'gsap';
 import { useSocket } from '../context/SocketContext';
-import type {
-  Room,
-  RoomsListPayload,
-  RoomCreatedPayload,
-  RoomUpdatedPayload,
-  RoomDeletedPayload,
-} from '../types/chat';
+import type { Room, RoomsListPayload, RoomCreatedPayload, RoomUpdatedPayload, RoomDeletedPayload } from '../types/chat';
 import { useMls } from '../context/MlsContext';
 import '../styles/features.css';
 
@@ -22,381 +16,203 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = 
   const { socket } = useSocket();
   const { createGroup } = useMls();
   const [rooms, setRooms] = useState<Room[]>([{ id: 'public', name: 'Public Chat' }]);
-  const [isCreating, setIsCreating] = useState<boolean>(false);
-  const [newRoomName, setNewRoomName] = useState<string>('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState<string>('');
+  const [editingName, setEditingName] = useState('');
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
 
   const sidebarRef = useRef<HTMLElement | null>(null);
   const backdropRef = useRef<HTMLDivElement | null>(null);
 
-  // GSAP slide-in / slide-out — same power2.inOut ease as MetricsBento cube rotations
-  // Only animate on mobile (< 768px md breakpoint). On desktop clear any GSAP inline style.
   useEffect(() => {
     const el = sidebarRef.current;
     const bd = backdropRef.current;
     if (!el) return;
-
     const isMobile = window.innerWidth < 768;
-
     if (!isMobile) {
-      // Desktop: remove any GSAP inline transform so CSS md:translate-x-0 takes over
       gsap.set(el, { clearProps: 'transform,x' });
       return;
     }
-
     if (isOpen) {
-      // Slide in from left
-      gsap.fromTo(
-        el,
-        { x: '-100%' },
-        { x: '0%', duration: 0.38, ease: 'power2.inOut' }
-      );
+      gsap.fromTo(el, { x: '-100%' }, { x: '0%', duration: 0.38, ease: 'power2.inOut' });
       if (bd) gsap.fromTo(bd, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
     } else {
-      // Slide out to left
       gsap.to(el, { x: '-100%', duration: 0.32, ease: 'power2.inOut' });
       if (bd) gsap.to(bd, { opacity: 0, duration: 0.22, ease: 'power2.in' });
     }
   }, [isOpen]);
 
-  // On mount and resize: ensure desktop sidebar is never blocked by GSAP transform
   useEffect(() => {
     const el = sidebarRef.current;
     if (!el) return;
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        gsap.set(el, { clearProps: 'transform,x' });
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const onResize = () => { if (window.innerWidth >= 768) gsap.set(el, { clearProps: 'transform,x' }); };
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   useEffect(() => {
     if (!socket) return;
-
     socket.emit('get_my_rooms');
-
-    const handleRoomsList = (data: RoomsListPayload) => {
-      if (data?.rooms && Array.isArray(data.rooms)) {
-        setRooms(data.rooms);
-      }
+    const onList = (d: RoomsListPayload) => { if (d?.rooms) setRooms(d.rooms); };
+    const onCreated = (d: RoomCreatedPayload) => {
+      if (!d?.room) return;
+      createGroup(d.room);
+      setRooms(p => p.some(r => r.id === d.room) ? p : [...p, { id: d.room, name: d.name || d.room }]);
+      navigator.clipboard.writeText(`${window.location.origin}/chatbox?room=${d.room}`).catch(() => { });
+      onSelectRoom?.(d.room);
     };
-
-    const handleRoomCreated = (data: RoomCreatedPayload) => {
-      if (data?.room) {
-        createGroup(data.room);
-        const newRoomObj: Room = { id: data.room, name: data.name || data.room };
-        setRooms((prev) => {
-          const exists = prev.some((r) => r.id === data.room);
-          if (exists) return prev;
-          return [...prev, newRoomObj];
-        });
-        // Copy invite link to clipboard automatically
-        const inviteUrl = `${window.location.origin}/chatbox?room=${data.room}`;
-        navigator.clipboard.writeText(inviteUrl).catch(() => { });
-        if (onSelectRoom) {
-          onSelectRoom(data.room);
-        }
-      }
+    const onUpdated = (d: RoomUpdatedPayload) => { if (d?.room && d?.name) setRooms(p => p.map(r => r.id === d.room ? { ...r, name: d.name } : r)); };
+    const onDeleted = (d: RoomDeletedPayload) => {
+      if (!d?.room) return;
+      setRooms(p => p.filter(r => r.id !== d.room));
+      if (currentRoom === d.room) onSelectRoom?.('public');
     };
-
-    const handleRoomUpdated = (data: RoomUpdatedPayload) => {
-      if (data?.room && data?.name) {
-        setRooms((prev) =>
-          prev.map((r) => (r.id === data.room ? { ...r, name: data.name } : r))
-        );
-      }
-    };
-
-    const handleRoomDeleted = (data: RoomDeletedPayload) => {
-      if (data?.room) {
-        setRooms((prev) => prev.filter((r) => r.id !== data.room));
-        if (currentRoom === data.room && onSelectRoom) {
-          onSelectRoom('public');
-        }
-      }
-    };
-
-    socket.on('rooms_list', handleRoomsList);
-    socket.on('room_created', handleRoomCreated);
-    socket.on('room_updated', handleRoomUpdated);
-    socket.on('room_deleted', handleRoomDeleted);
-
+    socket.on('rooms_list', onList);
+    socket.on('room_created', onCreated);
+    socket.on('room_updated', onUpdated);
+    socket.on('room_deleted', onDeleted);
     return () => {
-      socket.off('rooms_list', handleRoomsList);
-      socket.off('room_created', handleRoomCreated);
-      socket.off('room_updated', handleRoomUpdated);
-      socket.off('room_deleted', handleRoomDeleted);
+      socket.off('rooms_list', onList);
+      socket.off('room_created', onCreated);
+      socket.off('room_updated', onUpdated);
+      socket.off('room_deleted', onDeleted);
     };
   }, [socket, currentRoom, onSelectRoom, createGroup]);
 
-  const handleCreateSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleCreate = (e: FormEvent) => {
     e.preventDefault();
     if (!socket || !newRoomName.trim()) return;
     socket.emit('create_room', { name: newRoomName.trim() });
-    setNewRoomName('');
-    setIsCreating(false);
+    setNewRoomName(''); setIsCreating(false);
   };
-
-  const handleUpdateSubmit = (e: FormEvent<HTMLFormElement>, roomId: string) => {
+  const handleUpdate = (e: FormEvent, id: string) => {
     e.preventDefault();
     if (!socket || !editingName.trim()) return;
-    socket.emit('update_room', { room: roomId, name: editingName.trim() });
-    setEditingRoomId(null);
-    setEditingName('');
+    socket.emit('update_room', { room: id, name: editingName.trim() });
+    setEditingRoomId(null); setEditingName('');
   };
-
-  const handleDelete = (e: MouseEvent, roomId: string) => {
+  const handleDelete = (e: MouseEvent, id: string) => { e.stopPropagation(); if (socket) socket.emit('delete_room', { room: id }); };
+  const startEdit = (e: MouseEvent, room: Room) => { e.stopPropagation(); setEditingRoomId(room.id); setEditingName(room.name); };
+  const handleCopy = (e: MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!socket) return;
-    socket.emit('delete_room', { room: roomId });
-  };
-
-  const startEditing = (e: MouseEvent, room: Room) => {
-    e.stopPropagation();
-    setEditingRoomId(room.id);
-    setEditingName(room.name);
-  };
-
-  const handleCopyLink = (e: MouseEvent, roomId: string) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/chatbox?room=${roomId}`;
-    navigator.clipboard.writeText(url).catch(() => { });
-    setCopiedRoomId(roomId);
-    setTimeout(() => setCopiedRoomId(null), 1800);
+    navigator.clipboard.writeText(`${window.location.origin}/chatbox?room=${id}`).catch(() => { });
+    setCopiedRoomId(id); setTimeout(() => setCopiedRoomId(null), 1800);
   };
 
   return (
     <>
-      {/* Mobile backdrop — tap to close; GSAP animates opacity */}
-      <div
-        ref={backdropRef}
-        onClick={onClose}
-        className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs pointer-events-none opacity-0"
-        style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-      />
+      <div ref={backdropRef} onClick={onClose} className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] opacity-0 pointer-events-none" style={{ pointerEvents: isOpen ? 'auto' : 'none' }} />
 
-      {/* The sidebar itself.
-          Mobile: fixed overlay panel, hidden off-screen by default (translate-x-[-100%]),
-          GSAP animates it in/out. Desktop: regular static sidebar. */}
       <aside
         ref={sidebarRef}
         className={[
-          'fixed top-0 left-0 z-50 h-full translate-x-[-100%]',
-          'md:relative md:translate-x-0 md:z-auto',
-          'w-72 sm:w-76 lg:w-80 shrink-0 bg-[#181818] border-r border-[#333333]',
-          'flex flex-col p-4 md:p-5 select-none overflow-y-auto',
+          'fixed top-0 left-0 z-50 h-full translate-x-[-100%] md:relative md:translate-x-0 md:z-auto',
+          'w-72 sm:w-80 shrink-0 bg-[#1a1a1a] border-r border-white/10',
+          'flex flex-col select-none overflow-hidden',
         ].join(' ')}
       >
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between gap-1.5 sm:gap-2 pb-4 mb-3 border-b border-[#333333]">
-        <div className="flex items-center gap-2 min-w-0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="2em" height="2em" color="#FF3535" viewBox="0 0 32 32">
-            <path d="M0 0h32v32H0z" fill="none" />
-            <path fill="currentColor" d="M27.43 16.76v-1.52h1.52v-1.53h-4.57v1.53h1.53v1.52h-7.62v-6.09h3.05V9.14h-1.53V7.62h-1.52V6.09h-1.53V4.57h-1.52V3.05h-1.52V1.52h-1.53V0h-1.52v1.52H9.14v1.53H7.62v1.52H6.1v1.52H4.57v1.53H3.05v1.52H1.53v1.53h3.04v6.09H0v3.05h1.53v-1.53h1.52v1.53h1.52v3.05H6.1v1.52h3.04v-1.52h1.53v-1.53h1.52v-3.05h3.05v1.53h3.05v1.52h3.05v1.53h1.52v1.52h3.05v-1.52h1.52v-3.05h1.52v-1.53h1.53v1.53H32v-3.05Zm-10.67 0h-1.52v-6.09h-1.52v6.09H9.14v-1.52h1.53v-1.53H9.14v-3.04H7.62v6.09H6.1V7.62h1.52V6.09h1.52V4.57h1.53V3.05h1.52v1.52h1.53v1.52h1.52v1.53h1.52Z" />
-            <path fill="currentColor" d="M28.95 19.81h1.53v3.05h-1.53Zm0-13.72h1.53v7.62h-1.53Zm-1.52 16.77h1.52v3.04h-1.52Zm-1.52 3.04h1.52v1.53h-1.52ZM24.38 4.57h4.57v1.52h-4.57Z" />
-            <path fill="currentColor" d="M21.34 27.43V25.9h-1.53v-1.52h-4.57v1.52h-3.05v1.53h-1.52v1.52H9.14v1.52h3.05V32h7.62v-1.53h3.05v-1.52h3.05v-1.52zm1.52-21.34h1.52v7.62h-1.52ZM9.14 9.14h4.58v1.53H9.14ZM6.1 27.43h3.04v1.52H6.1ZM4.57 25.9H6.1v1.53H4.57Zm-1.52-3.04h1.52v3.04H3.05Zm-1.52-3.05h1.52v3.05H1.53Z" />
-          </svg>
+        {/* Header — clean, no //, no RFC */}
+        <div className="shrink-0 px-4 h-14 flex items-center justify-between border-b border-white/10">
+          <div className="flex items-center gap-2.5 min-w-0">
 
-          <h4 className="">
-            Rooms
-          </h4>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsCreating(!isCreating)}
-          className="ob-btn-accent text-[10px] sm:text-[11px] py-1.5 px-2 sm:px-2.5 font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm shrink-0"
-          title="Create a new end-to-end encrypted private session"
-        >
-          <span className="material-symbols-outlined text-[14px] leading-none">
-            {isCreating ? 'close' : 'add'}
-          </span>
-          <span className="hidden sm:inline">{isCreating ? 'Cancel' : 'New Room'}</span>
-        </button>
 
-        {/* Mobile close button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="md:hidden ml-1 flex items-center justify-center w-8 h-8 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-          aria-label="Close sidebar"
-        >
-          <span className="material-symbols-outlined text-[18px]">close</span>
-        </button>
-      </div>
-
-      {/* Inline Room Creation Form */}
-      {isCreating && (
-        <form
-          onSubmit={handleCreateSubmit}
-          className="mb-4 flex flex-col gap-2.5 bg-[#202020] p-3 rounded border border-[#333333] shadow-md animate-in fade-in duration-150"
-        >
-          <div className="flex items-center justify-between">
-            <span className="ob-mono text-[10px] font-bold uppercase tracking-wider text-[#ff3535]">
-              Create E2EE Room
-            </span>
-            <span className="text-[10px] text-zinc-500 font-mono">RFC 9420</span>
+            <h4 className="font-mono text-[11px] font-bold tracking-widest uppercase text-zinc-300 truncate">Rooms</h4>
+            <span className="font-mono text-[10px] text-zinc-500">{rooms.length}</span>
           </div>
-          <input
-            type="text"
-            placeholder="Room display name..."
-            value={newRoomName}
-            onChange={(e) => setNewRoomName(e.target.value)}
-            className="bg-[#121212] text-white text-xs px-3 py-2 rounded border border-[#333333] focus:border-[#ff3535] focus:outline-none placeholder-zinc-500 font-sans"
-            autoFocus
-          />
-          <div className="flex items-center gap-2">
-            <button
-              type="submit"
-              disabled={!newRoomName.trim()}
-              className="ob-btn-accent text-xs py-1.5 px-3 flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              Launch Group
-            </button>
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
-              onClick={() => setIsCreating(false)}
-              className="text-xs text-zinc-400 hover:text-white px-2.5 py-1.5 bg-[#181818] border border-[#333333] rounded hover:border-zinc-500 transition-colors cursor-pointer"
+              onClick={() => setIsCreating(v => !v)}
+              className={`px-2.5 py-1.5 font-mono text-[11px] font-bold uppercase tracking-widest transition-colors ${isCreating ? 'bg-transparent text-zinc-400 hover:text-white' : 'bg-white text-black hover:bg-zinc-100'}`}
+              title="Create room"
             >
-              Cancel
+              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px] leading-none">{isCreating ? 'close' : 'add'}</span><span className="hidden sm:inline">{isCreating ? 'Cancel' : 'New'}</span></span>
+            </button>
+            <button type="button" onClick={onClose} className="md:hidden w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition-colors" aria-label="Close sidebar">
+              <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
-        </form>
-      )}
-
-      {/* Rooms List Section */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between px-1 mb-1">
-          <span className="ob-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-            Active Channels
-          </span>
-          <span className="text-[10px] text-zinc-500 font-mono">{rooms.length}</span>
         </div>
 
-        {rooms.map((room) => {
-          const isActive = currentRoom === room.id;
-          const isEditing = editingRoomId === room.id;
-          const isPublic = room.id === 'public';
-          const isCopied = copiedRoomId === room.id;
-
-          if (isEditing) {
-            return (
-              <form
-                key={room.id}
-                onSubmit={(e) => handleUpdateSubmit(e, room.id)}
-                className="bg-[#222222] p-2 rounded flex items-center gap-2 border border-[#ff3535] shadow-sm"
-              >
-                <input
-                  type="text"
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  className="bg-[#121212] text-white text-xs p-1.5 rounded border border-[#333333] focus:border-[#ff3535] focus:outline-none flex-1 font-sans"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  className="text-xs text-white bg-[#10b981] hover:bg-[#059669] px-2 py-1 rounded font-semibold cursor-pointer transition-colors"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingRoomId(null)}
-                  className="text-xs text-zinc-400 hover:text-white px-1.5 font-semibold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </form>
-            );
-          }
-
-          return (
-            <div
-              key={room.id}
-              onClick={() => onSelectRoom && onSelectRoom(room.id)}
-              className={`px-3 py-2.5 rounded flex items-center justify-between text-xs font-semibold cursor-pointer transition-all group ${isActive
-                ? 'bg-[#222222] text-white border-l-2 border-[#ff3535] border-y border-r border-[#333333] shadow-sm'
-                : 'bg-transparent text-zinc-300 hover:text-white hover:bg-[#1f1f1f] border-l-2 border-transparent'
-                }`}
-            >
-              <div className="flex items-center gap-2 min-w-0 truncate">
-                <span
-                  className={`material-symbols-outlined text-[15px] shrink-0 ${isActive ? 'text-[#ff3535]' : 'text-zinc-500 group-hover:text-zinc-400'
-                    }`}
-                >
-                  {isPublic ? <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
-                    <path d="M0 0h24v24H0z" fill="none" />
-                    <path fill="currentColor" d="M6 2h12v2H6zm0 18h12v2H6zM18 4h2v2h-2zM4 18h2v2H4zM4 4h2v2H4zm14 14h2v2h-2zM2 6h2v12H2zm18 0h2v12h-2zM8 4h2v4H8zm2 4h4v2h-4zm4 2h4v2h-4zm4-2h2v2h-2zM4 12h2v2H4zm6 4h2v4h-2zm-4-2h4v2H6zm8 2h2v4h-2zm2-2h4v2h-4z" />
-                  </svg>
-                    : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
-                      <path d="M0 0h24v24H0z" fill="none" />
-                      <path fill="currentColor" d="M5 8h14v2H5zm0 12h14v2H5zM3 10h2v10H3zm16 0h2v10h-2zM7 4h2v4H7zm2-2h6v2H9zm6 2h2v4h-2z" />
-                    </svg>
-                  }
-                </span>
-                <span className="truncate tracking-tight font-medium">
-                  {room.name}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] shrink-0 shadow-[0_0_6px_#10b981]" />
-                )}
-
-                {!isPublic && (
-                  <div className="hidden group-hover:flex items-center gap-1 text-zinc-400">
-                    <button
-                      type="button"
-                      onClick={(e) => handleCopyLink(e, room.id)}
-                      title={isCopied ? 'Link Copied!' : 'Copy Invite Link'}
-                      className={`p-1 rounded hover:bg-[#2e2e2e] hover:text-white transition-colors cursor-pointer flex items-center ${isCopied ? 'text-[#10b981]' : ''
-                        }`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {isCopied ? 'check' : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
-                          <path d="M0 0h24v24H0z" fill="none" />
-                          <path fill="currentColor" d="M4 6h7v2H4zm0 10h7v2H4zM2 8h2v8H2zm18-2h-7v2h7zm0 10h-7v2h7zm2-8h-2v8h2zM7 11h10v2H7z" />
-                        </svg>
-                        }
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => startEditing(e, room)}
-                      title="Rename room"
-                      className="p-1 rounded hover:bg-[#2e2e2e] hover:text-white transition-colors cursor-pointer flex items-center"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" viewBox="0 0 24 24">
-                        <path d="M0 0h24v24H0z" fill="none" />
-                        <path fill="currentColor" d="M4 16h2v2h2v2h2v2H2v-8h2zm8 4h-2v-2h2zm2-2h-2v-2h2zm-4-2H8v-2h2zm6 0h-2v-2h2zM6 14H4v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zM8 12H6v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zm-10-2H8V8h2zm8 0h-2V8h2zm4 0h-2V8h2zM12 8h-2V6h2zm4 0h-2V6h2zm4 0h-2V6h2zm-6-2h-2V4h2zm4 0h-2V4h2zm-2-2h-2V2h2z" />
-                      </svg>
-
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleDelete(e, room.id)}
-                      title="Delete room"
-                      className="p-1 rounded hover:bg-[#2e2e2e] hover:text-[#ff3535] transition-colors cursor-pointer flex items-center"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" viewBox="0 0 24 24">
-                        <path d="M0 0h24v24H0z" fill="none" />
-                        <path fill="currentColor" d="M18 22H6v-2h12zM9 6h6V4h2v2h5v2h-2v12h-2V8H6v12H4V8H2V6h5V4h2zm6-2H9V2h6z" />
-                      </svg>
-
-                    </button>
-                  </div>
-                )}
-              </div>
+        {/* Create form — simple, sharp, no buzzwords */}
+        {isCreating && (
+          <form onSubmit={handleCreate} className="mx-3 mt-3 p-3 bg-[#272727] border border-white/10 flex flex-col gap-2.5">
+            <input
+              type="text"
+              placeholder="Room name"
+              value={newRoomName}
+              onChange={e => setNewRoomName(e.target.value)}
+              className="w-full bg-[#101010] text-white text-sm px-3 py-2 border border-white/10 focus:border-white/20 focus:outline-none placeholder-zinc-500"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button type="submit" disabled={!newRoomName.trim()} className="flex-1 bg-white text-black text-xs font-mono font-bold uppercase tracking-widest py-2 hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Create</button>
+              <button type="button" onClick={() => setIsCreating(false)} className="px-3 py-2 bg-transparent border border-white/10 text-zinc-300 hover:text-white hover:border-white/20 text-xs font-mono uppercase tracking-widest transition-colors">Cancel</button>
             </div>
-          );
-        })}
-      </div>
-    </aside>
+          </form>
+        )}
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 flex flex-col gap-0.5">
+          <div className="px-2 pb-2 flex items-center justify-between">
+            <span className="font-mono text-[10px] font-bold tracking-widest uppercase text-zinc-500">Channels</span>
+          </div>
+
+          {rooms.map(room => {
+            const active = currentRoom === room.id;
+            const editing = editingRoomId === room.id;
+            const isPublic = room.id === 'public';
+            const copied = copiedRoomId === room.id;
+
+            if (editing) {
+              return (
+                <form key={room.id} onSubmit={e => handleUpdate(e, room.id)} className="mx-1 p-2 bg-[#272727] border border-white/10 flex items-center gap-2">
+                  <input type="text" value={editingName} onChange={e => setEditingName(e.target.value)} className="flex-1 bg-[#101010] text-white text-xs px-2 py-1.5 border border-white/10 focus:outline-none focus:border-white/20" autoFocus />
+                  <button type="submit" className="px-2.5 py-1.5 bg-white text-black text-xs font-mono font-bold uppercase hover:bg-zinc-100 transition-colors">Save</button>
+                  <button type="button" onClick={() => setEditingRoomId(null)} className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/5">✕</button>
+                </form>
+              );
+            }
+
+            return (
+              <div
+                key={room.id}
+                onClick={() => onSelectRoom?.(room.id)}
+                className={`group flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer transition-colors border ${active ? 'bg-white/[0.04] border-white/10 border-l-2 border-l-[#FF3535] text-white' : 'bg-transparent border-transparent text-zinc-400 hover:text-white hover:bg-white/[0.03] hover:border-white/5'}`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`material-symbols-outlined text-[16px] shrink-0 ${active ? 'text-[#FF3535]' : 'text-zinc-500 group-hover:text-zinc-300'}`}>
+                    {isPublic ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M6 2h12v2H6zm0 18h12v2H6zM18 4h2v2h-2zM4 18h2v2H4zM4 4h2v2H4zm14 14h2v2h-2zM2 6h2v12H2zm18 0h2v12h-2zM8 4h2v4H8zm2 4h4v2h-4zm4 2h4v2h-4zm4-2h2v2h-2zM4 12h2v2H4zm6 4h2v4h-2zm-4-2h4v2H6zm8 2h2v4h-2zm2-2h4v2h-4z" /></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M5 8h14v2H5zm0 12h14v2H5zM3 10h2v10H3zm16 0h2v10h-2zM7 4h2v4H7zm2-2h6v2H9zm6 2h2v4h-2z" /></svg>
+                    )}
+                  </span>
+                  <span className="truncate text-sm font-medium tracking-tight">{room.name}</span>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  {!isPublic && (
+                    <div className="hidden group-hover:flex items-center gap-0.5">
+                      <button type="button" onClick={e => handleCopy(e, room.id)} title={copied ? 'Copied' : 'Copy link'} className={`w-7 h-7 flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors ${copied ? 'text-[#10B981]' : 'text-zinc-500'}`}>
+                        <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 6h7v2H4zm0 10h7v2H4zM2 8h2v8H2zm18-2h-7v2h7zm0 10h-7v2h7zm2-8h-2v8h2zM7 11h10v2H7z" /></svg>}</span>
+                      </button>
+                      <button type="button" onClick={e => startEdit(e, room)} title="Rename" className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 16h2v2h2v2h2v2H2v-8h2zm8 4h-2v-2h2zm2-2h-2v-2h2zm-4-2H8v-2h2zm6 0h-2v-2h2zM6 14H4v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zM8 12H6v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zm-10-2H8V8h2zm8 0h-2V8h2zm4 0h-2V8h2zM12 8h-2V6h2zm4 0h-2V6h2zm4 0h-2V6h2zm-6-2h-2V4h2zm4 0h-2V4h2zm-2-2h-2V2h2z" /></svg>
+                      </button>
+                      <button type="button" onClick={e => handleDelete(e, room.id)} title="Delete" className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-[#FF3535] hover:bg-white/5 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M18 22H6v-2h12zM9 6h6V4h2v2h5v2h-2v12h-2V8H6v12H4V8H2V6h5V4h2zm6-2H9V2h6z" /></svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </aside>
     </>
   );
 };

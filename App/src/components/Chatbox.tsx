@@ -378,10 +378,10 @@ const Chatbox: FC = () => {
             <button
               type="button"
               onClick={() => setSidebarOpen(v => !v)}
-              className="md:hidden flex items-center justify-center w-9 h-9 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+              className="md:hidden flex items-center justify-center w-9 h-9 rounded bg-[#202020] border border-[#333333] text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors cursor-pointer shrink-0"
               aria-label="Toggle rooms sidebar"
             >
-              <span className="material-symbols-outlined text-[20px]">{sidebarOpen ? 'close' : 'menu'}</span>
+              <span className="material-symbols-outlined text-[18px]">{sidebarOpen ? 'close' : 'menu'}</span>
             </button>
             <div className="flex items-center gap-1.5">
               <span className="text-[#ff3535] font-mono font-bold text-lg">#</span>
@@ -409,7 +409,7 @@ const Chatbox: FC = () => {
                   }`}
                 title="Toggle MLS Cryptographic Inspector Panel"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" width="em" height="1.5em" viewBox="0 0 24 24">
                   <path d="M0 0h24v24H0z" fill="none" />
                   <path fill="currentColor" d="M18 4h2v2h2v12h-2v2h-2v2H6v-2H4v-2H2V6h2V4h2V2h12zm-7 13h2v-6h-2zm0-8h2V7h-2z" />
                 </svg>
@@ -428,28 +428,33 @@ const Chatbox: FC = () => {
                     setIsInCall(true);
                     setCallMinimized(false);
                   }}
-                  className="group px-3 py-1.5 rounded bg-[#1e1e1e] hover:bg-[#ff3535] text-zinc-200 hover:text-white border border-[#333333] hover:border-[#ff3535] flex items-center gap-1.5 font-['JetBrains_Mono',monospace] text-xs font-bold uppercase tracking-wider cursor-pointer transition-all shadow-sm"
+                  className="group px-3 py-1.5   text-zinc-200 hover:text-white  flex items-center gap-1.5 font-['JetBrains_Mono',monospace] text-xs font-bold uppercase tracking-wider cursor-pointer transition-all shadow-sm"
                   title="Initialize Encrypted Group Voice/Video Stream"
                 >
                   <span className="material-symbols-outlined text-[16px] text-[#ff3535] group-hover:text-white transition-colors">
-                    videocam
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                      <path d="M0 0h24v24H0z" fill="none" />
+                      <path fill="currentColor" d="M20 17V7h2v10zm-2-2V9h2v6zM2 7h2v10H2zm14 0h2v10h-2zM4 5h12v2H4zm0 12h12v2H4z" />
+                    </svg>
+
                   </span>
-                  <span className="hidden sm:inline">JOIN CALL</span>
+
                 </button>
               ) : (
                 <div className="flex items-center gap-1.5 font-['JetBrains_Mono',monospace]">
                   <button
                     type="button"
                     onClick={() => setCallMinimized((v) => !v)}
-                    className={`p-1.5 flex items-center justify-center cursor-pointer transition-colors ${callMinimized
-                      ? 'text-[#10b981] hover:text-[#10b981] hover:bg-white/5'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                    className={`px-3 py-1.5 rounded flex items-center gap-1.5 text-xs font-bold cursor-pointer uppercase tracking-wider transition-all ${callMinimized
+                      ? 'text-[#10b981]'
+                      : 'text-zinc-300 hover:text-white'
                       }`}
                     title={callMinimized ? 'Expand Video Stage' : 'Minimize to Header'}
                   >
-                    <span className="material-symbols-outlined text-[18px]">
+                    <span className="material-symbols-outlined text-[16px]">
                       {callMinimized ? 'sensors' : 'keyboard_arrow_down'}
                     </span>
+
                   </button>
                 </div>
               )
