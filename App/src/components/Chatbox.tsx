@@ -32,7 +32,7 @@ const Chatbox: FC = () => {
   const [roomMeta, setRoomMeta] = useState<RoomMeta>({});
   const [isInCall, setIsInCall] = useState<boolean>(false);
   const [callMinimized, setCallMinimized] = useState<boolean>(false);
-  const [isCallChatOpen, setIsCallChatOpen] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nextId = useRef<number>(1);
   const clientMsgId = useRef<number>(0);
@@ -55,7 +55,6 @@ const Chatbox: FC = () => {
     // End any active call and reset call state when switching rooms
     setIsInCall(false);
     setCallMinimized(false);
-    setIsCallChatOpen(false);
 
     let cancelled = false;
     getCachedMessages(currentRoom).then((cached) => {
@@ -363,20 +362,33 @@ const Chatbox: FC = () => {
       )}
 
       {/* Rooms Sidebar */}
-      <Rooms currentRoom={currentRoom} onSelectRoom={setCurrentRoom} />
+      <Rooms
+        currentRoom={currentRoom}
+        onSelectRoom={(id) => { setCurrentRoom(id); setSidebarOpen(false); }}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {/* Main Chat Workspace */}
       <div className="flex-1 h-full flex flex-col min-w-0 bg-[#272727] relative">
         {/* Chat Header */}
         <header className="h-16 shrink-0 flex items-center justify-between px-6 bg-[#181818] border-b border-[#333333] select-none">
           <div className="flex items-center gap-3 min-w-0">
+            {/* Mobile sidebar hamburger toggle */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(v => !v)}
+              className="md:hidden flex items-center justify-center w-9 h-9 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+              aria-label="Toggle rooms sidebar"
+            >
+              <span className="material-symbols-outlined text-[20px]">{sidebarOpen ? 'close' : 'menu'}</span>
+            </button>
             <div className="flex items-center gap-1.5">
               <span className="text-[#ff3535] font-mono font-bold text-lg">#</span>
               <h6 className="text-white font-bold text-base font-['Hanken_Grotesk',sans-serif] m-0 truncate tracking-tight">
                 {currentRoom === 'public' ? 'Public Chat' : currentRoom}
               </h6>
             </div>
-
           </div>
 
           <div className="flex items-center gap-3">
@@ -397,7 +409,7 @@ const Chatbox: FC = () => {
                   }`}
                 title="Toggle MLS Cryptographic Inspector Panel"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+                <svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" viewBox="0 0 24 24">
                   <path d="M0 0h24v24H0z" fill="none" />
                   <path fill="currentColor" d="M18 4h2v2h2v12h-2v2h-2v2H6v-2H4v-2H2V6h2V4h2V2h12zm-7 13h2v-6h-2zm0-8h2V7h-2z" />
                 </svg>
@@ -429,16 +441,15 @@ const Chatbox: FC = () => {
                   <button
                     type="button"
                     onClick={() => setCallMinimized((v) => !v)}
-                    className={`px-3 py-1.5 rounded flex items-center gap-1.5 text-xs font-bold cursor-pointer uppercase tracking-wider transition-all ${callMinimized
-                      ? 'bg-[#10b981] text-black hover:bg-[#059669]'
-                      : 'bg-[#1e1e1e] text-zinc-300 hover:text-white border border-[#333333]'
+                    className={`p-1.5 flex items-center justify-center cursor-pointer transition-colors ${callMinimized
+                      ? 'text-[#10b981] hover:text-[#10b981] hover:bg-white/5'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
                       }`}
                     title={callMinimized ? 'Expand Video Stage' : 'Minimize to Header'}
                   >
-                    <span className="material-symbols-outlined text-[16px]">
+                    <span className="material-symbols-outlined text-[18px]">
                       {callMinimized ? 'sensors' : 'keyboard_arrow_down'}
                     </span>
-                    <span>{callMinimized ? 'CALL LIVE' : 'MINIMIZE'}</span>
                   </button>
                 </div>
               )
@@ -448,130 +459,13 @@ const Chatbox: FC = () => {
 
         {/* Video Call Stage (Only in Private Rooms when active and not minimized) */}
         {isPrivateRoom && isInCall && !callMinimized ? (
-          <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative">
-            <div className="flex-1 min-w-0 h-full relative">
-              <VideoCall
-                roomId={currentRoom}
-                isPrivateRoom={isPrivateRoom}
-                myId={myId}
-                onClose={() => setIsInCall(false)}
-                onToggleChat={() => setIsCallChatOpen((v) => !v)}
-                isChatOpen={isCallChatOpen}
-              />
-
-              {/* Mobile in-call chat: full-width bottom sheet overlay — does NOT crush the call stage */}
-              {isCallChatOpen && (
-                <div className="md:hidden absolute inset-0 z-30 flex flex-col justify-end pointer-events-none">
-                  {/* backdrop */}
-                  <button
-                    type="button"
-                    aria-label="Close in-call chat"
-                    onClick={() => setIsCallChatOpen(false)}
-                    className="absolute inset-0 bg-black/45 backdrop-blur-[1px] pointer-events-auto"
-                  />
-                  {/* sheet */}
-                  <div className="relative pointer-events-auto w-full h-[58vh] max-h-[64vh] flex flex-col bg-[#202020] border-t border-[#333333] rounded-t-2xl shadow-2xl animate-in slide-in-from-bottom duration-200 overflow-hidden">
-                    <div className="shrink-0 flex justify-center pt-2 pb-1">
-                      <span className="w-10 h-1 rounded-full bg-[#333333]" />
-                    </div>
-                    <div className="h-11 px-4 bg-[#181818] border-y border-[#333333] flex items-center justify-between text-xs shrink-0">
-                      <span className="font-['JetBrains_Mono',monospace] font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff3535]" />
-                        IN-CALL TRANSMISSIONS
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setIsCallChatOpen(false)}
-                        className="w-7 h-7 rounded-full bg-[#272727] border border-[#333333] flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-thin scrollbar-track-[#202020] scrollbar-thumb-[#333333]">
-                      {messages.length === 0 ? (
-                        <p className="font-['JetBrains_Mono',monospace] text-xs text-zinc-500 text-center py-8">No transmissions yet — say something.</p>
-                      ) : (
-                        messages.map((msg) => (
-                          <div key={msg.id} className="text-xs flex flex-col gap-1">
-                            <span className="font-bold text-[#ff3535] text-[10px] font-['JetBrains_Mono',monospace] uppercase">#{msg.senderId}</span>
-                            <p className="text-zinc-200 bg-[#181818] p-2.5 rounded border border-[#333333] border-l-2 border-l-[#ff3535] m-0 font-['JetBrains_Mono',monospace] text-xs break-words">
-                              {msg.text}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="p-3 bg-[#181818] border-t border-[#333333] flex gap-2 shrink-0">
-                      <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Send in-call transmission..."
-                        className="flex-1 bg-[#272727] border border-[#333333] rounded-full px-4 py-2 text-xs text-white focus:outline-none focus:border-[#ff3535] font-['JetBrains_Mono',monospace]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSend}
-                        className="px-4 py-2 bg-[#ff3535] hover:bg-[#ff5252] text-white rounded-full text-xs font-['JetBrains_Mono',monospace] font-bold uppercase tracking-wider cursor-pointer transition-colors shrink-0"
-                      >
-                        SEND
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* In-Call Text Chat — desktop side drawer (hidden on mobile) */}
-            {isCallChatOpen && (
-              <div className="hidden md:flex w-80 lg:w-96 h-full flex-col bg-[#202020] border-l border-[#333333] shrink-0 z-20">
-                <div className="h-12 px-4 bg-[#181818] border-b border-[#333333] flex items-center justify-between text-xs shrink-0">
-                  <span className="font-['JetBrains_Mono',monospace] font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#ff3535]" />
-                    IN-CALL TRANSMISSIONS
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsCallChatOpen(false)}
-                    className="text-zinc-400 hover:text-white cursor-pointer font-mono"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-thin scrollbar-track-[#202020] scrollbar-thumb-[#333333]">
-                  {messages.map((msg) => (
-                    <div key={msg.id} className="text-xs flex flex-col gap-1">
-                      <span className="font-bold text-[#ff3535] text-[10px] font-['JetBrains_Mono',monospace] uppercase">
-                        #{msg.senderId}
-                      </span>
-                      <p className="text-zinc-200 bg-[#181818] p-2.5 rounded border border-[#333333] border-l-2 border-l-[#ff3535] m-0 font-['JetBrains_Mono',monospace] text-xs break-words">
-                        {msg.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-3 bg-[#181818] border-t border-[#333333] flex gap-2 shrink-0">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Send in-call transmission..."
-                    className="flex-1 bg-[#272727] border border-[#333333] rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#ff3535] font-['JetBrains_Mono',monospace]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSend}
-                    className="px-3 py-1.5 bg-[#ff3535] hover:bg-[#ff5252] text-white rounded text-xs font-['JetBrains_Mono',monospace] font-bold uppercase tracking-wider cursor-pointer transition-colors"
-                  >
-                    SEND
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="flex-1 min-h-0 overflow-hidden relative">
+            <VideoCall
+              roomId={currentRoom}
+              isPrivateRoom={isPrivateRoom}
+              myId={myId}
+              onClose={() => setIsInCall(false)}
+            />
           </div>
         ) : (
           <>

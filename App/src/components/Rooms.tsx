@@ -1,4 +1,5 @@
-import { useState, useEffect, type FC, type FormEvent, type MouseEvent } from 'react';
+import { useState, useEffect, useRef, type FC, type FormEvent, type MouseEvent } from 'react';
+import gsap from 'gsap';
 import { useSocket } from '../context/SocketContext';
 import type {
   Room,
@@ -13,9 +14,11 @@ import '../styles/features.css';
 interface RoomsProps {
   currentRoom?: string;
   onSelectRoom?: (roomId: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
+const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = false, onClose }) => {
   const { socket } = useSocket();
   const { createGroup } = useMls();
   const [rooms, setRooms] = useState<Room[]>([{ id: 'public', name: 'Public Chat' }]);
@@ -24,6 +27,53 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
+
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const backdropRef = useRef<HTMLDivElement | null>(null);
+
+  // GSAP slide-in / slide-out — same power2.inOut ease as MetricsBento cube rotations
+  // Only animate on mobile (< 768px md breakpoint). On desktop clear any GSAP inline style.
+  useEffect(() => {
+    const el = sidebarRef.current;
+    const bd = backdropRef.current;
+    if (!el) return;
+
+    const isMobile = window.innerWidth < 768;
+
+    if (!isMobile) {
+      // Desktop: remove any GSAP inline transform so CSS md:translate-x-0 takes over
+      gsap.set(el, { clearProps: 'transform,x' });
+      return;
+    }
+
+    if (isOpen) {
+      // Slide in from left
+      gsap.fromTo(
+        el,
+        { x: '-100%' },
+        { x: '0%', duration: 0.38, ease: 'power2.inOut' }
+      );
+      if (bd) gsap.fromTo(bd, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+    } else {
+      // Slide out to left
+      gsap.to(el, { x: '-100%', duration: 0.32, ease: 'power2.inOut' });
+      if (bd) gsap.to(bd, { opacity: 0, duration: 0.22, ease: 'power2.in' });
+    }
+  }, [isOpen]);
+
+  // On mount and resize: ensure desktop sidebar is never blocked by GSAP transform
+  useEffect(() => {
+    const el = sidebarRef.current;
+    if (!el) return;
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        gsap.set(el, { clearProps: 'transform,x' });
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -121,10 +171,30 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
   };
 
   return (
-    <aside className="w-68 sm:w-76 lg:w-80 h-full shrink-0 bg-[#181818] border-r border-[#333333] flex flex-col p-4 md:p-5 select-none overflow-y-auto">
+    <>
+      {/* Mobile backdrop — tap to close; GSAP animates opacity */}
+      <div
+        ref={backdropRef}
+        onClick={onClose}
+        className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs pointer-events-none opacity-0"
+        style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
+      />
+
+      {/* The sidebar itself.
+          Mobile: fixed overlay panel, hidden off-screen by default (translate-x-[-100%]),
+          GSAP animates it in/out. Desktop: regular static sidebar. */}
+      <aside
+        ref={sidebarRef}
+        className={[
+          'fixed top-0 left-0 z-50 h-full translate-x-[-100%]',
+          'md:relative md:translate-x-0 md:z-auto',
+          'w-72 sm:w-76 lg:w-80 shrink-0 bg-[#181818] border-r border-[#333333]',
+          'flex flex-col p-4 md:p-5 select-none overflow-y-auto',
+        ].join(' ')}
+      >
       {/* Sidebar Header */}
-      <div className="flex items-center justify-between gap-2 pb-4 mb-3 border-b border-[#333333]">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2 pb-4 mb-3 border-b border-[#333333]">
+        <div className="flex items-center gap-2 min-w-0">
           <svg xmlns="http://www.w3.org/2000/svg" width="2em" height="2em" color="#FF3535" viewBox="0 0 32 32">
             <path d="M0 0h32v32H0z" fill="none" />
             <path fill="currentColor" d="M27.43 16.76v-1.52h1.52v-1.53h-4.57v1.53h1.53v1.52h-7.62v-6.09h3.05V9.14h-1.53V7.62h-1.52V6.09h-1.53V4.57h-1.52V3.05h-1.52V1.52h-1.53V0h-1.52v1.52H9.14v1.53H7.62v1.52H6.1v1.52H4.57v1.53H3.05v1.52H1.53v1.53h3.04v6.09H0v3.05h1.53v-1.53h1.52v1.53h1.52v3.05H6.1v1.52h3.04v-1.52h1.53v-1.53h1.52v-3.05h3.05v1.53h3.05v1.52h3.05v1.53h1.52v1.52h3.05v-1.52h1.52v-3.05h1.52v-1.53h1.53v1.53H32v-3.05Zm-10.67 0h-1.52v-6.09h-1.52v6.09H9.14v-1.52h1.53v-1.53H9.14v-3.04H7.62v6.09H6.1V7.62h1.52V6.09h1.52V4.57h1.53V3.05h1.52v1.52h1.53v1.52h1.52v1.53h1.52Z" />
@@ -139,13 +209,23 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
         <button
           type="button"
           onClick={() => setIsCreating(!isCreating)}
-          className="ob-btn-accent text-[11px] py-1.5 px-2.5 font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm"
+          className="ob-btn-accent text-[10px] sm:text-[11px] py-1.5 px-2 sm:px-2.5 font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm shrink-0"
           title="Create a new end-to-end encrypted private session"
         >
-          <span className="material-symbols-outlined text-[14px]">
+          <span className="material-symbols-outlined text-[14px] leading-none">
             {isCreating ? 'close' : 'add'}
           </span>
-          <span>{isCreating ? 'Cancel' : 'New Room'}</span>
+          <span className="hidden sm:inline">{isCreating ? 'Cancel' : 'New Room'}</span>
+        </button>
+
+        {/* Mobile close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="md:hidden ml-1 flex items-center justify-center w-8 h-8 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+          aria-label="Close sidebar"
+        >
+          <span className="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
@@ -317,6 +397,7 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom }) => {
         })}
       </div>
     </aside>
+    </>
   );
 };
 
