@@ -2,6 +2,8 @@
 
 # Enncom
 ## Privet , Real time Application .
+<img width="509" height="151" alt="image" src="https://github.com/user-attachments/assets/b8293a55-6796-4489-a03c-62e90dbbf567" />
+
 </div>
 
 ## THE PROBLEM WITH MODERN APPS:
