@@ -78,3 +78,6 @@ WebRTC (Web Real-Time Communication) is an open-source framework that allows bro
 [![WebRTC](https://img.shields.io/badge/WebRTC-video-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
 
 </div>
+
+<img width="1920" height="1014" alt="image" src="https://github.com/user-attachments/assets/73d86826-203f-4ea2-b205-e05cdfeec5c4" />
+
