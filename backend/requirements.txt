@@ -1,7 +1,9 @@
-flask
-flask-socketio
-flask-cors
 redis
 simple-websocket
 python-dotenv
 gunicorn
+Flask
+Flask-Cors
+Flask-SocketIO
+python-socketio
+python-engineio
