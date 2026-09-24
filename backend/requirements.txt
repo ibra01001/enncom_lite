@@ -3,3 +3,5 @@ flask-socketio
 flask-cors
 redis
 simple-websocket
+python-dotenv
+gunicorn

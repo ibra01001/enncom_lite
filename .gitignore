@@ -1,0 +1,50 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+backend/.env
+App/.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv
+venv/
+ENV/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+App/dist/
+App/node_modules/
+
+# Rust / WASM
+openmls-wasm/target/
+openmls-wasm/pkg/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
