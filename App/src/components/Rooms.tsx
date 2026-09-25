@@ -166,9 +166,7 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = 
             >
               <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px] leading-none">{isCreating ? 'close' : 'add'}</span><span className="hidden sm:inline">{isCreating ? 'Cancel' : 'New'}</span></span>
             </button>
-            <button type="button" onClick={onClose} className="md:hidden w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 transition-colors" aria-label="Close sidebar">
-              <span className="material-symbols-outlined text-[18px]">close</span>
-            </button>
+
           </div>
         </div>
 
