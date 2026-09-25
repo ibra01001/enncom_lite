@@ -21,19 +21,17 @@ def validate_message_payload(msg, room_meta):
     return True, None
 
 def save_message(msg):
-    pipe.expire(room_key, TTL_SECONDS)
     """
     Persist chat message to Redis bounded history list.
     """
     room = msg.get('room', 'public')
-    
     room_key = f"chat:messages:{room}"
     try:
         msg_to_store = {k: v for k, v in msg.items() if k != 'clientMsgId'}
         pipe = r.pipeline()
         pipe.lpush(room_key, json.dumps(msg_to_store))
         pipe.ltrim(room_key, 0, MAX_HISTORY - 1)
-      
+        pipe.expire(room_key, TTL_SECONDS)
         pipe.execute()
     except Exception as e:
         print(f"Error saving message to Redis: {e}")
