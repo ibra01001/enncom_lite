@@ -28,11 +28,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',
-          opacity: 0.28,
-          maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+          opacity: 0.3,
+          maskImage: 'linear-gradient(to bottom, black 50%, transparent 100%)',
+          height: '110vh',
         }}
-      />
+      ></div>
 
       {/* Content container — fluid max-width + responsive padding for all PC sizes */}
       <div className="relative z-10 w-full max-w-[1600px] mx-auto flex items-center px-5 sm:px-8 md:px-10 lg:px-12 xl:px-16 2xl:px-20 py-6 sm:py-8 md:py-10 lg:py-12 xl:py-16 2xl:py-20 min-h-[calc(100vh-3.5rem)] supports-[height:100dvh]:min-h-[calc(100dvh-3.5rem)]">
@@ -57,35 +57,43 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
             Enccom is a free, end-to-end encrypted messaging app that lets you send messages, photos, videos, and files to your friends and family. It&apos;s simple, fast, and secure.
           </p>
 
-          {/* CTA Row — responsive */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-1 sm:pt-2 w-full sm:w-auto">
-            <Link to="/chatbox" className="shadow-lg w-full sm:w-auto">
+          {/* CTA Row — kept original position/padding */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-2">
+            <Link to="/chatbox" className=" shadow-lg">
               <button
-                className="group relative flex h-12 sm:h-[52px] md:h-14 w-full sm:w-60 md:w-64 items-center justify-between bg-[#ff3535] pl-5 sm:pl-6 pr-0 overflow-hidden rounded"
+                className="group relative flex h-14 w-64 items-center justify-between bg-[#ff3535] pl-6 pr-0 overflow-hidden rounded"
               >
-                <span className="absolute inset-y-0 right-0 w-0 bg-[#1e1e1e] transition-all duration-300 ease-in-out group-hover:w-full" />
+                <span
+                  className="absolute inset-y-0 right-0 w-0 bg-[#1e1e1e] transition-all duration-300 ease-in-out group-hover:w-full"
+                ></span>
 
-                <span className="relative z-10 font-sans font-bold tracking-wider text-white text-[13px] sm:text-sm transition-colors duration-300 group-hover:text-[#ff3535]">
+                <span
+                  className="relative z-10 font-sans  font-bold font-[#ff3535] tracking-wider text-white transition-colors duration-300 group-hover:text-[#ff3535]"
+                >
                   START CHATTING
                 </span>
 
-                <span className="relative z-10 flex h-full w-12 sm:w-14 items-center justify-center bg-white text-[#ff3535] shrink-0">
+                <span
+                  className="relative z-10 flex h-full w-14 items-center justify-center bg-white text-[#ff3535]"
+                >
                   <svg
-                    className="h-4 w-4 sm:h-5 sm:w-5 -rotate-45 transition-transform duration-300 ease-in-out group-hover:rotate-0"
+                    className="h-5 w-5 -rotate-45 transition-transform duration-300 ease-in-out group-hover:rotate-0"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2.5"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="square" strokeLinejoin="miter" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    <path
+                      strokeLinecap="square"
+                      strokeLinejoin="miter"
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    ></path>
                   </svg>
                 </span>
               </button>
+
             </Link>
-            <button
-              onClick={handleExplore}
-              className="ob-btn-ghost w-full sm:w-auto justify-center text-[13px] sm:text-sm py-3 sm:py-3"
-            >
+            <button onClick={handleExplore} className="ob-btn-ghost">
               Explore Architecture
             </button>
           </div>
