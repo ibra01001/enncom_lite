@@ -34,8 +34,8 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
         }}
       ></div>
 
-      {/* Content container — fluid max-width + responsive padding for all PC sizes */}
-      <div className="relative z-10 w-full max-w-[1600px] mx-auto flex items-center px-5 sm:px-8 md:px-10 lg:px-12 xl:px-16 2xl:px-20 py-6 sm:py-8 md:py-10 lg:py-12 xl:py-16 2xl:py-20 min-h-[calc(100vh-3.5rem)] supports-[height:100dvh]:min-h-[calc(100dvh-3.5rem)]">
+      {/* Content container — pinned bottom-left with 5px padding */}
+      <div className="relative z-10 w-full  mx-auto flex items-end justify-start pl-[30px] pr-5 sm:pr-8 md:pr-10 lg:pr-12 xl:pr-16 2xl:pr-20 pt-6 sm:pt-8 md:pt-10 lg:pt-12 xl:pt-16 2xl:pt-20 pb-[30px] min-h-[calc(100vh-3.5rem)] supports-[height:100dvh]:min-h-[calc(100dvh-3.5rem)]">
         {/* Left column — fluid width */}
         <div className="w-full max-w-[640px] sm:max-w-[600px] md:max-w-[640px] lg:max-w-[560px] xl:max-w-[680px] 2xl:max-w-[760px] flex flex-col items-start text-left gap-5 sm:gap-6 md:gap-6 xl:gap-7 2xl:gap-8 hero-content">
           {/* Statement Headline — fluid clamp across 1024 → 2560 */}
