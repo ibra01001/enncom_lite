@@ -35,9 +35,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScrollDown }) => {
       ></div>
 
       {/* Content container — pinned bottom-left with 5px padding */}
-      <div className="relative z-10 w-full max-w-[1600px] mx-auto flex items-end justify-start pl-[5px] pr-5 sm:pr-8 md:pr-10 lg:pr-12 xl:pr-16 2xl:pr-20 pt-6 sm:pt-8 md:pt-10 lg:pt-12 xl:pt-16 2xl:pt-20 pb-[5px] min-h-[calc(100vh-3.5rem)] supports-[height:100dvh]:min-h-[calc(100dvh-3.5rem)]">
+      <div className="relative z-10 w-full max-w-[1920px] max-w-[1600px] max-w-[1280px] max-w-[1024px] mx-auto flex items-end justify-start pl-[25px] pr-5 sm:pr-8 md:pr-10 lg:pr-12 xl:pr-16 2xl:pr-20 pt-6 sm:pt-8 md:pt-10 lg:pt-12 xl:pt-16 2xl:pt-20 pb-[25px] min-h-[calc(100vh-3.5rem)] supports-[height:100dvh]:min-h-[calc(100dvh-3.5rem)]">
         {/* Left column — fluid width */}
-        <div className="w-full max-w-[640px] sm:max-w-[600px] md:max-w-[640px] lg:max-w-[560px] xl:max-w-[680px] 2xl:max-w-[760px] flex flex-col items-start text-left gap-5 sm:gap-6 md:gap-6 xl:gap-7 2xl:gap-8 hero-content">
+        <div className="w-full  max-w-[640px] sm:max-w-[600px] md:max-w-[640px] lg:max-w-[560px] xl:max-w-[680px] 2xl:max-w-[760px] flex flex-col items-start text-left gap-5 sm:gap-6 md:gap-6 xl:gap-7 2xl:gap-8 hero-content">
           {/* Statement Headline — fluid clamp across 1024 → 2560 */}
           <h1
             className="hero-title font-extrabold tracking-[-0.04em] leading-[0.9] text-white
