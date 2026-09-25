@@ -21,9 +21,11 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = 
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const sidebarRef = useRef<HTMLElement | null>(null);
   const backdropRef = useRef<HTMLDivElement | null>(null);
+  const menuPosRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const el = sidebarRef.current;
@@ -51,6 +53,23 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = 
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Close mobile 3-dot menu on outside click / Esc / scroll
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const onDocClick = (e: globalThis.MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('[data-room-menu]') || t.closest('[data-room-kebab]')) return;
+      setOpenMenuId(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenMenuId(null); };
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [openMenuId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -99,6 +118,23 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = 
     e.stopPropagation();
     navigator.clipboard.writeText(`${window.location.origin}/chatbox?room=${id}`).catch(() => { });
     setCopiedRoomId(id); setTimeout(() => setCopiedRoomId(null), 1800);
+  };
+
+  const toggleMenu = (e: MouseEvent, id: string) => {
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLElement;
+    const r = target.getBoundingClientRect();
+    // position fixed menu 4px below button, right-aligned, keep inside viewport
+    const menuW = 156;
+    let x = r.right - menuW;
+    if (x < 8) x = 8;
+    if (x + menuW > window.innerWidth - 8) x = window.innerWidth - menuW - 8;
+    let y = r.bottom + 6;
+    // if near bottom, open upward
+    if (y + 132 > window.innerHeight) y = r.top - 132 - 6;
+    if (y < 8) y = 8;
+    menuPosRef.current = { x, y };
+    setOpenMenuId(prev => (prev === id ? null : id));
   };
 
   return (
@@ -195,17 +231,31 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = 
 
                 <div className="flex items-center gap-1 shrink-0">
                   {!isPublic && (
-                    <div className="hidden group-hover:flex items-center gap-0.5">
-                      <button type="button" onClick={e => handleCopy(e, room.id)} title={copied ? 'Copied' : 'Copy link'} className={`w-7 h-7 flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors ${copied ? 'text-[#10B981]' : 'text-zinc-500'}`}>
-                        <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 6h7v2H4zm0 10h7v2H4zM2 8h2v8H2zm18-2h-7v2h7zm0 10h-7v2h7zm2-8h-2v8h2zM7 11h10v2H7z" /></svg>}</span>
+                    <>
+                      {/* Desktop — hover */}
+                      <div className="hidden md:group-hover:flex items-center gap-0.5">
+                        <button type="button" onClick={e => handleCopy(e, room.id)} title={copied ? 'Copied' : 'Copy link'} className={`w-7 h-7 flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors ${copied ? 'text-[#10B981]' : 'text-zinc-500'}`}>
+                          <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 6h7v2H4zm0 10h7v2H4zM2 8h2v8H2zm18-2h-7v2h7zm0 10h-7v2h7zm2-8h-2v8h2zM7 11h10v2H7z" /></svg>}</span>
+                        </button>
+                        <button type="button" onClick={e => startEdit(e, room)} title="Rename" className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 16h2v2h2v2h2v2H2v-8h2zm8 4h-2v-2h2zm2-2h-2v-2h2zm-4-2H8v-2h2zm6 0h-2v-2h2zM6 14H4v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zM8 12H6v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zm-10-2H8V8h2zm8 0h-2V8h2zm4 0h-2V8h2zM12 8h-2V6h2zm4 0h-2V6h2zm4 0h-2V6h2zm-6-2h-2V4h2zm4 0h-2V4h2zm-2-2h-2V2h2z" /></svg>
+                        </button>
+                        <button type="button" onClick={e => handleDelete(e, room.id)} title="Delete" className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-[#FF3535] hover:bg-white/5 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M18 22H6v-2h12zM9 6h6V4h2v2h5v2h-2v12h-2V8H6v12H4V8H2V6h5V4h2zm6-2H9V2h6z" /></svg>
+                        </button>
+                      </div>
+                      {/* Mobile — 3-dot kebab (pixel style, original SVG) */}
+                      <button
+                        type="button"
+                        data-room-kebab
+                        onClick={e => toggleMenu(e, room.id)}
+                        aria-label="More actions"
+                        aria-expanded={openMenuId === room.id}
+                        className="md:hidden w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M10 4h4v4h-4zM10 10h4v4h-4zM10 16h4v4h-4z" /></svg>
                       </button>
-                      <button type="button" onClick={e => startEdit(e, room)} title="Rename" className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 16h2v2h2v2h2v2H2v-8h2zm8 4h-2v-2h2zm2-2h-2v-2h2zm-4-2H8v-2h2zm6 0h-2v-2h2zM6 14H4v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zM8 12H6v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zm-10-2H8V8h2zm8 0h-2V8h2zm4 0h-2V8h2zM12 8h-2V6h2zm4 0h-2V6h2zm4 0h-2V6h2zm-6-2h-2V4h2zm4 0h-2V4h2zm-2-2h-2V2h2z" /></svg>
-                      </button>
-                      <button type="button" onClick={e => handleDelete(e, room.id)} title="Delete" className="w-7 h-7 flex items-center justify-center text-zinc-500 hover:text-[#FF3535] hover:bg-white/5 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M18 22H6v-2h12zM9 6h6V4h2v2h5v2h-2v12h-2V8H6v12H4V8H2V6h5V4h2zm6-2H9V2h6z" /></svg>
-                      </button>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -213,6 +263,52 @@ const Rooms: FC<RoomsProps> = ({ currentRoom = 'public', onSelectRoom, isOpen = 
           })}
         </div>
       </aside>
+
+      {/* Mobile 3-dot menu — fixed, not clipped by overflow */}
+      {openMenuId && menuPosRef.current && (() => {
+        const room = rooms.find(r => r.id === openMenuId);
+        if (!room) return null;
+        const copied = copiedRoomId === room.id;
+        const pos = menuPosRef.current!;
+        return (
+          <div
+            data-room-menu
+            className="fixed z-[60] w-40 bg-[#272727] border border-white/10 rounded shadow-2xl overflow-hidden flex flex-col py-1 md:hidden"
+            style={{ left: pos.x, top: pos.y }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={e => { handleCopy(e as any, room.id); setOpenMenuId(null); }}
+              className={`flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm hover:bg-white/[0.06] transition-colors ${copied ? 'text-[#10B981]' : 'text-zinc-200'}`}
+            >
+              {copied ? (
+                <span className="material-symbols-outlined text-[16px] leading-none">check</span>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 6h7v2H4zm0 10h7v2H4zM2 8h2v8H2zm18-2h-7v2h7zm0 10h-7v2h7zm2-8h-2v8h2zM7 11h10v2H7z" /></svg>
+              )}
+              <span className="font-mono text-xs font-medium">{copied ? 'Copied!' : 'Share link'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={e => { startEdit(e as any, room); setOpenMenuId(null); }}
+              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm text-zinc-200 hover:bg-white/[0.06] transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M4 16h2v2h2v2h2v2H2v-8h2zm8 4h-2v-2h2zm2-2h-2v-2h2zm-4-2H8v-2h2zm6 0h-2v-2h2zM6 14H4v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zM8 12H6v-2h2zm6 0h-2v-2h2zm6 0h-2v-2h2zm-10-2H8V8h2zm8 0h-2V8h2zm4 0h-2V8h2zM12 8h-2V6h2zm4 0h-2V6h2zm4 0h-2V6h2zm-6-2h-2V4h2zm4 0h-2V4h2zm-2-2h-2V2h2z" /></svg>
+              <span className="font-mono text-xs font-medium">Edit</span>
+            </button>
+            <div className="mx-2 my-1 h-px bg-white/10" />
+            <button
+              type="button"
+              onClick={e => { handleDelete(e as any, room.id); setOpenMenuId(null); }}
+              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 text-sm text-[#FF3535] hover:bg-[#FF3535]/10 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="M18 22H6v-2h12zM9 6h6V4h2v2h5v2h-2v12h-2V8H6v12H4V8H2V6h5V4h2zm6-2H9V2h6z" /></svg>
+              <span className="font-mono text-xs font-medium">Delete</span>
+            </button>
+          </div>
+        );
+      })()}
     </>
   );
 };

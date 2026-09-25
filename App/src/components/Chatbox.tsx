@@ -34,6 +34,8 @@ const Chatbox: FC = () => {
   const [callMinimized, setCallMinimized] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeContainerRef = useRef<HTMLDivElement>(null);
   const nextId = useRef<number>(1);
   const clientMsgId = useRef<number>(0);
   const { socket, myId } = useSocket();
@@ -344,8 +346,38 @@ const Chatbox: FC = () => {
 
   const isEmpty = !input.trim();
 
+  // Swipe-to-open/close sidebar on mobile — keeps existing GSAP animation via isOpen prop
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (window.innerWidth >= 768) return;
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (window.innerWidth >= 768 || !touchStartRef.current) return;
+    const start = touchStartRef.current;
+    const end = e.changedTouches[0];
+    const dx = end.clientX - start.x;
+    const dy = end.clientY - start.y;
+    // only horizontal swipes
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.2) {
+      touchStartRef.current = null;
+      return;
+    }
+    if (!sidebarOpen && start.x < 36 && dx > 60) {
+      setSidebarOpen(true);
+    } else if (sidebarOpen && dx < -60) {
+      setSidebarOpen(false);
+    }
+    touchStartRef.current = null;
+  };
+
   return (
-    <div className="ob-root w-full h-full flex flex-row overflow-hidden flex-1 bg-[#272727]">
+    <div
+      ref={swipeContainerRef}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      className="ob-root w-full h-full flex flex-row overflow-hidden flex-1 bg-[#272727] touch-pan-y"
+    >
       {/* Floating Join Error Alert */}
       {joinError && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded bg-[#1e0e0e] border border-[#ff3535] border-l-4 text-white shadow-2xl flex items-center gap-3 animate-in fade-in duration-150">
@@ -374,17 +406,8 @@ const Chatbox: FC = () => {
         {/* Chat Header */}
         <header className="h-16 shrink-0 flex items-center justify-between px-6 bg-[#181818] border-b border-[#333333] select-none">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Mobile sidebar hamburger toggle */}
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(v => !v)}
-              className="md:hidden flex items-center justify-center w-9 h-9 rounded bg-[#202020] border border-[#333333] text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors cursor-pointer shrink-0"
-              aria-label="Toggle rooms sidebar"
-            >
-              <span className="material-symbols-outlined text-[18px]">{sidebarOpen ? 'close' : 'menu'}</span>
-            </button>
             <div className="flex items-center gap-1.5">
-              <span className="text-[#ff3535] font-mono font-bold text-lg">#</span>
+              <span className="text-white font-mono font-bold text-lg">#</span>
               <h6 className="text-white font-bold text-base font-['Hanken_Grotesk',sans-serif] m-0 truncate tracking-tight">
                 {currentRoom === 'public' ? 'Public Chat' : currentRoom}
               </h6>
