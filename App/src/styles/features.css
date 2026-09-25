@@ -322,3 +322,33 @@
   font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
   vertical-align: middle;
 }
+
+/* ---------- HeroSection — Responsive PC Tuning ---------- */
+/* Ensure hero content never overflows on short viewports (768p laptops) */
+@media (min-width: 1024px) and (max-height: 800px) {
+  .hero-title {
+    font-size: clamp(2.8rem, 4.2vw, 4.6rem) !important;
+    line-height: 0.92 !important;
+  }
+  .hero-content {
+    gap: 1rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+}
+@media (min-width: 1024px) and (max-height: 720px) {
+  .hero-title {
+    font-size: clamp(2.6rem, 3.8vw, 4rem) !important;
+  }
+}
+@media (min-width: 1280px) and (max-height: 800px) {
+  .hero-title {
+    font-size: clamp(3.2rem, 4vw, 5rem) !important;
+  }
+}
+/* Ultra-wide: cap content so it doesn't stretch */
+@media (min-width: 1920px) {
+  .hero-title {
+    font-size: clamp(5rem, 4.5vw, 6.5rem) !important;
+  }
+}
